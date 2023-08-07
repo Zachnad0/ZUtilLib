@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Data.Common;
+using System.Runtime.CompilerServices;
 
 namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 {
@@ -43,19 +45,13 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 
 	public class Term : IExpressionable
 	{
-		public IExpressionable Coefficient { get; private set; }
 		public IExpressionable Exponent { get; private set; }
-		public float? CoefficientF { get; private set; }
 		public float? ExponentF { get; private set; }
 		public Variables Variable { get; private set; }
 
-		public Term(IExpressionable coefficient, float? coefficientF, Variables variable, IExpressionable exponent, float? exponentF)
+		public Term(Variables variable, IExpressionable exponent, float? exponentF)
 		{
 			Variable = variable;
-			if (coefficient != null)
-				Coefficient = coefficient;
-			else
-				CoefficientF = coefficientF ?? 1;
 			if (exponent != null)
 				Exponent = exponent;
 			else
@@ -69,19 +65,13 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 				throw new MissingVarSubException(Variable, this);
 			float varSub = varSubs.First().Item2;
 
-			float coeff = 0;
-			if (Coefficient != null)
-				coeff = Coefficient.SubstituteValues(subs);
-			else
-				coeff = CoefficientF.Value;
-
 			float exp = 0;
 			if (Exponent != null)
 				exp = Exponent.SubstituteValues(subs);
 			else
 				exp = ExponentF.Value;
 
-			return coeff * (float)Math.Pow(varSub, exp);
+			return (float)Math.Pow(varSub, exp);
 		}
 
 		public IExpressionable Differentiate(Variables diffBy)
@@ -89,24 +79,19 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 			if (Variable != diffBy)
 				return null;
 
-
-			Term diffRightHand, baseRightHand;
-			// Determine right hand side via chain rule
+			IExpressionable diffThis;
+			// Determine this thing diffed via chain rule
 			if (Exponent != null)
 			{
 				IExpressionable newExponent = new Expression(Exponent, new PlainValue(-1));
-				diffRightHand = new Term(Exponent, null, Variable, newExponent, null);
+				diffThis = new MultiplyGroup(Exponent, new Term(Variable, newExponent, null));
 			}
 			else
 			{
-				diffRightHand = new Term(null, ExponentF, Variable, null, ExponentF - 1);
+				diffThis = new MultiplyGroup(null, new PlainValue(ExponentF.Value), new Term(Variable, null, ExponentF - 1));
 			}
 
-			// Product rule with coefficient and right hand side
-			baseRightHand = new Term(null, null, Variable, Exponent, ExponentF);
-			return new Expression(
-				new MultiplyGroup(baseRightHand, (Coefficient ?? new PlainValue(CoefficientF.Value)).Differentiate(diffBy)),
-				new MultiplyGroup(Coefficient ?? new PlainValue(CoefficientF.Value), diffRightHand));
+			return diffThis;
 		}
 	}
 
@@ -151,6 +136,8 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 		public float SubstituteValues(params (Variables, float)[] subs) => Value;
 
 		public IExpressionable Differentiate(Variables diffBy) => new PlainValue(0);
+
+		public static implicit operator PlainValue(float f) => new PlainValue(f);
 	}
 
 	public enum Variables
@@ -162,6 +149,8 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 	{
 		float SubstituteValues(params (Variables, float)[] subs);
 		IExpressionable Differentiate(Variables diffBy);
+		public static Expression operator +(IExpressionable left, IExpressionable right) => new Expression(left, right);
+		public static MultiplyGroup operator *(IExpressionable left, IExpressionable right) => new MultiplyGroup(left, right);
 	}
 
 	public class MissingVarSubException : Exception
@@ -177,13 +166,14 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 		public static void Test()
 		{
 			Expression exp = new Expression(
-				new Term(null, 0.2f, Variables.x, null, 2),
-				new Term(null, -8, Variables.x, null, 1),
-				new PlainValue(4)
+				(PlainValue)0.2f * (IExpressionable)new Term(Variables.x, null, 2),
+				(PlainValue)(-8) * (IExpressionable)new Term(Variables.x, null, 1),
+				(PlainValue)4
 			);
+			Console.WriteLine(exp.SubstituteValues((Variables.x, 3))); // -18.2
+
 			IExpressionable diff = exp.Differentiate(Variables.x);
-			Console.WriteLine(diff.SubstituteValues((Variables.x, 3)));
-			Console.WriteLine(diff);
+			Console.WriteLine(diff.SubstituteValues((Variables.x, 3))); // -6.8
 		}
 	}
 }

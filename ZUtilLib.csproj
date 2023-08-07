@@ -1,7 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Title>Zachnad0's Personal Utility Library</Title>
+    <Authors>Zachnad0</Authors>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <PackageId>Zachnad0.UtilLib</PackageId>
+    <Description>This is merely a perpetually WIP personal library intended only for personal use, though if one finds it useful, they may use it freely due to it being on a BSD 3-clause license.
+Features:
+- Generic utility methods
+- Custom object-oriented algebra and calculus tool
+- Experimental AI stuff
+- Terrible/no documentation</Description>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>bad documentation; Zachnad0; Utility</PackageTags>
+    <NeutralLanguage>en-001</NeutralLanguage>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -13,7 +28,25 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="icon.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="7.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="LICENSE.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
