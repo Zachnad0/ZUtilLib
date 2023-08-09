@@ -41,8 +41,12 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		public void InitializeThis(NeuralNetwork basedOn = null)
 		{
 			if (basedOn == null)
-			{
-				// CONTINUE HERE ===========================================================
+			{ // Generate new completely random thing with random biases and etc
+				for (int i = 0; i < InputLayer.Length; i++)
+				{
+					InputLayer[i] = new NeuralDataUnit()
+				}
+
 				return;
 			}
 
@@ -52,23 +56,55 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			}
 		}
 	}
-}
 
-/// <summary>
-/// I mean yea it is called a neuron, but uh skill issue
-/// </summary>
-public class NeuralDataUnit
-{
-	[JsonInclude]
-	[JsonPropertyName("neuron_weight")]
-	public readonly float InternalWeight;
-
-	[JsonPropertyName("input_neurons")]
-	public NeuralDataUnit[] InputDataUnits { get; private set; }
-
-	[JsonConstructor]
-	public NeuralDataUnit(float neuronValue)
+	/// <summary>
+	/// I mean yea it is called a neuron, but uh skill issue
+	/// </summary>
+	public class NeuralDataUnit : INeuralNode
 	{
-		InternalWeight = neuronValue;
+		[JsonPropertyName("input_neurons_link_weights")]
+		public (NeuralDataUnit, float)[] LinkUnitsWeights { get; private set; }
+
+		[JsonIgnore]
+		public float OutputValue { get => CalculateValue(); }
+
+		[JsonConstructor]
+		public NeuralDataUnit((NeuralDataUnit, float)[] linkBias)
+		{
+			LinkUnitsWeights = linkBias;
+		}
+
+		private float CalculateValue()
+		{
+			foreach (var link in LinkUnitsWeights)
+			{
+				NeuralDataUnit dataUnit = link.Item1;
+				float biasWeight = link.Item2;
+
+				// CONTINUE HERE =============================================
+				return default; // Linear regression may be required
+			}
+		}
+	}
+
+	/// <summary>
+	/// This is to be used for the input and output layer of the NN
+	/// </summary>
+	public class SimpleNode : INeuralNode
+	{
+		[JsonIgnore]
+		public float OutputValue { get => outVal.Value; }
+		[JsonIgnore]
+		private float? outVal;
+
+		public SimpleNode(float? inputValue = null)
+		{
+			outVal = inputValue;
+		}
+	}
+
+	public interface INeuralNode
+	{
+		public float OutputValue { get; }
 	}
 }
