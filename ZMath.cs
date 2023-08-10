@@ -46,16 +46,15 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 	public class Term : IExpressionable
 	{
 		public IExpressionable Exponent { get; private set; }
-		public float? ExponentF { get; private set; }
 		public Variables Variable { get; private set; }
 
-		public Term(Variables variable, IExpressionable exponent, float? exponentF)
+		public Term(Variables variable, IExpressionable exponent, float? exponentF = null)
 		{
 			Variable = variable;
-			if (exponent != null)
-				Exponent = exponent;
+			if (exponentF != null)
+				Exponent = (PlainValue)exponentF.Value;
 			else
-				ExponentF = exponentF ?? 1;
+				Exponent = exponent;
 		}
 
 		public float SubstituteValues(params (Variables, float)[] subs)
@@ -68,8 +67,6 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 			float exp = 0;
 			if (Exponent != null)
 				exp = Exponent.SubstituteValues(subs);
-			else
-				exp = ExponentF.Value;
 
 			return (float)Math.Pow(varSub, exp);
 		}
@@ -79,17 +76,9 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 			if (Variable != diffBy)
 				return null;
 
-			IExpressionable diffThis;
 			// Determine this thing diffed via chain rule
-			if (Exponent != null)
-			{
-				IExpressionable newExponent = new Expression(Exponent, new PlainValue(-1));
-				diffThis = new MultiplyGroup(Exponent, new Term(Variable, newExponent, null));
-			}
-			else
-			{
-				diffThis = new MultiplyGroup(null, new PlainValue(ExponentF.Value), new Term(Variable, null, ExponentF - 1));
-			}
+			IExpressionable newExponent = new Expression(Exponent, new PlainValue(-1));
+			IExpressionable diffThis = new MultiplyGroup(Exponent, new Term(Variable, newExponent, null));
 
 			return diffThis;
 		}

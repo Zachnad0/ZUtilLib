@@ -15,8 +15,12 @@ Features:
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageTags>bad documentation; Zachnad0; Utility</PackageTags>
+    <PackageTags>bad_documentation; Zachnad0; Utility; AI;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
+    <Version>1.1.1</Version>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>Randomised neural networks can now be generated.
+Number filtering tool added to ZUtils class.</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

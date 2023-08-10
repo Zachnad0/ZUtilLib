@@ -69,5 +69,15 @@ namespace ZUtilLib
 
 			return false;
 		}
+
+		public static string FilterNumbers(this string str, bool removeNotIsolate)
+		{
+			char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+			if (!removeNotIsolate)
+				return new string(str.Where(x => numbers.Contains(x)).ToArray());
+			List<char> output = str.ToList();
+			output.RemoveAll(x => numbers.Contains(x));
+			return new string(output.ToArray());
+		}
 	}
 }
