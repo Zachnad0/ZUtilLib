@@ -2,10 +2,47 @@
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace ZUtilLib.ZAI // Random AI stuff here
 {
+	/// <summary>
+	/// Types of neural data node activation functions.
+	/// </summary>
+	public enum NDNodeActivFunc
+	{
+		ReLU, Sigmoid, SoftPlus
+	}
+
+	public static class GraphStuff
+	{
+		/// <summary>
+		/// Uses the current graph equation to get y from x.
+		/// </summary>
+		/// <param name="x">X value.</param>
+		/// <returns>Y value.</returns>
+		public delegate float GraphEquation(float x);
+
+		/// <summary>
+		/// This is used to obtain the activation function based on the type.
+		/// </summary>
+		/// <param name="type">Neural data node activation function type.</param>
+		/// <returns>The delegate of the corresponding function.</returns>
+		public static GraphEquation GetEquationFromType(NDNodeActivFunc type)
+		{
+			return type switch
+			{
+				NDNodeActivFunc.ReLU => ReLUEquation,
+				NDNodeActivFunc.Sigmoid => SigmoidEquation,
+				NDNodeActivFunc.SoftPlus => SoftPlusEquation,
+				_ => throw new NotImplementedException(),
+			};
+		}
+
+		public static float ReLUEquation(float x) => MathF.Max(0, x);
+		public static float SigmoidEquation(float x) => 1 / (1 + MathF.Exp(-x));
+		public static float SoftPlusEquation(float x) => MathF.Log(1 + MathF.Exp(x));
+	}
+
 	/// <summary>
 	/// A neural network instance
 	/// </summary>
@@ -23,6 +60,12 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("internal_layers")]
 		public NeuralDataNode[,] InternalLayers { get; private set; }
 
+		[JsonPropertyName("node_graph_type")]
+		public NDNodeActivFunc NodeGraphType { get; private set; }
+
+		[JsonIgnore]
+		private bool _is_initialized = false, _outputs_setup = false;
+
 		/// <summary>
 		/// Construct a new neural network instance.
 		/// </summary>
@@ -30,20 +73,23 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		/// <param name="outputHeight">The number of output nodes.</param>
 		/// <param name="internalHeights">The number of hidden nodes per layer.</param>
 		/// <param name="internalCount">The number of hidden node layers.</param>
-		public NeuralNetwork(int inputHeight, int outputHeight, int internalHeights, int internalCount)
+		/// <param name="nodeGraphType">The type of graph to be used for each node's calculation.</param>
+		public NeuralNetwork(int inputHeight, int outputHeight, int internalHeights, int internalCount, NDNodeActivFunc nodeGraphType)
 		{
 			// Initialize
 			InputLayer = new InputNode[inputHeight];
 			OutputLayer = new OutputNode[outputHeight];
 			InternalLayers = new NeuralDataNode[internalCount, internalHeights];
+			NodeGraphType = nodeGraphType;
 		}
 
 		/// <summary>
 		/// Initializes this neural network by with a completely random set of node connection weights.
 		/// </summary>
-		public void InitializeThis()
+		public void InitializeThis(float randomAmplifier = 1)
 		{
 			Random rand = new Random();
+			GraphStuff.GraphEquation graphEquation = GraphStuff.GetEquationFromType(NodeGraphType);
 
 			// Input layer
 			for (int i = 0; i < InputLayer.Length; i++)
@@ -62,15 +108,17 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					{
 						linkWeights = new (INeuralNode, float)[InputLayer.Length];
 						for (int l = 0; l < InputLayer.Length; l++)
-							linkWeights[l] = (InputLayer[l], (float)rand.NextDouble());
-						InternalLayers[c, i] = new NeuralDataNode(linkWeights);
+							linkWeights[l] = (InputLayer[l], randomAmplifier * (float)rand.NextDouble());
+
+						InternalLayers[c, i] = new NeuralDataNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
 					}
 					else
 					{
 						linkWeights = new (INeuralNode, float)[InternalLayers.GetLength(1)];
 						for (int l = 0; l < linkWeights.Length; l++)
-							linkWeights[l] = (InternalLayers[c - 1, l], (float)rand.NextDouble());
-						InternalLayers[c, i] = new NeuralDataNode(linkWeights);
+							linkWeights[l] = (InternalLayers[c - 1, l], randomAmplifier * (float)rand.NextDouble());
+
+						InternalLayers[c, i] = new NeuralDataNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
 					}
 				}
 			}
@@ -80,9 +128,12 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			{
 				var linkWeights = new (INeuralNode, float)[InternalLayers.GetLength(1)];
 				for (int l = 0; l < linkWeights.Length; l++)
-					linkWeights[l] = (InternalLayers[InternalLayers.GetLength(0) - 1, l], (float)rand.NextDouble());
-				OutputLayer[i] = new OutputNode(linkWeights);
+					linkWeights[l] = (InternalLayers[InternalLayers.GetLength(0) - 1, l], randomAmplifier * (float)rand.NextDouble());
+
+				OutputLayer[i] = new OutputNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
 			}
+
+			_is_initialized = true;
 			return;
 		}
 
@@ -121,50 +172,103 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					for (int i = 0; i < InternalLayers.GetLength(1); i++)
 					{
 						NeuralDataNode node = InternalLayers[c, i];
+
+						// Links
 						for (int l = 0; l < node.LinkNodesWeights.Length; l++)
 						{
-							if (rand.NextDouble() < mutationChance)
-							{
-								// Modify link weight value
-								var link = node.LinkNodesWeights[l];
-								link.Weight += GuassianEq() * link.Weight;
-								// Re-assign node reference
-								if (c == 0) // First layer must replace old references with newer ones in input layer
-									link.NeuralNode = InputLayer[l];
-								else
-									link.NeuralNode = InternalLayers[c - 1, l];
+							var link = node.LinkNodesWeights[l];
 
-								node.LinkNodesWeights[l] = link;
-							}
+							// Modify link weight value IF it should
+							if (rand.NextDouble() < mutationChance)
+								link.Weight += GuassianEq() * link.Weight;
+
+							// Re-assign node reference
+							if (c == 0) // First layer must replace old references with newer ones in input layer
+								link.NeuralNode = InputLayer[l];
+							else
+								link.NeuralNode = InternalLayers[c - 1, l];
+
+							node.LinkNodesWeights[l] = link;
 						}
+
+						// Bias
+						if (rand.NextDouble() < mutationChance)
+							node.NodeBias += GuassianEq() * node.NodeBias; // SERIOUS THING THIS MUST BE FIXED AT SOME POINT MAY GET STUCK AT 0 ===================================================
 					}
 				}
 
 				// Output layer
 				foreach (OutputNode node in OutputLayer)
+				{
+					// Links
 					for (int i = 0; i < node.LinkNodesWeights.Length; i++)
 					{
-						if (rand.NextDouble() < mutationChance)
-						{
-							// Modify link weight value
-							var link = node.LinkNodesWeights[i];
-							link.Weight += GuassianEq() * link.Weight;
-							// Replace link with new instance
-							link.NeuralNode = InternalLayers[InternalLayers.GetLength(0) - 1, i];
+						var link = node.LinkNodesWeights[i];
 
-							node.LinkNodesWeights[i] = link;
-						}
+						// Modify link weight value IF it should
+						if (rand.NextDouble() < mutationChance)
+							link.Weight += GuassianEq() * link.Weight;
+
+						// Replace link with new instance
+						link.NeuralNode = InternalLayers[InternalLayers.GetLength(0) - 1, i];
+
+						node.LinkNodesWeights[i] = link;
 					}
 
+					// Bias
+					if (rand.NextDouble() < mutationChance)
+						node.NodeBias += GuassianEq() * node.NodeBias; // SERIOUS THING THIS MUST BE FIXED AT SOME POINT MAY GET STUCK AT 0 ===================================================
+				}
+
+				_is_initialized = true;
 				return;
 			}
 
 			throw new Exception("NeuralNetwork InitializeThis Error: Different network scale between this and network to be based on.");
 		}
 
-		public delegate float GraphEquation(float x);
+		/// <summary>
+		/// Use this after initialization in order to setup the names of the output nodes.
+		/// </summary>
+		/// <param name="names">The names given to the output nodes (order matters).</param>
+		/// <exception cref="Exception"></exception>
+		public void SetupOutputs(params string[] names)
+		{
+			if (_is_initialized && names.Length == OutputLayer.Length)
+			{
+				for (int i = 0; i < OutputLayer.Length; i++)
+					OutputLayer[i].NodeName = new string(names[i]); // The garbage collector will not be pleased.
+				_outputs_setup = true;
+				return;
+			}
 
-		// public static GraphEquation ReLU // CONTINUE HERE ===========================================
+			throw new Exception("NeuralNetwork Critical Error: Uninitialized OR too many or too few input node names.");
+		}
+
+		/// <summary>
+		/// After initialization and output name setting up, this is used to input the input data and retrieve the calculated outcome.
+		/// </summary>
+		/// <param name="inputData">The names and values for each input node.</param>
+		/// <returns>The names and calculated output values of each output node.</returns>
+		/// <exception cref="Exception"></exception>
+		public (string NodeName, float Value)[] PerformCalculations(params (string InputNodeName, float Value)[] inputData)
+		{
+			if (_is_initialized && _outputs_setup && inputData.Length == InputLayer.Length && !inputData.Any(d => d.Value > 1 || d.Value < 0))
+			{
+				for (int i = 0; i < inputData.Length; i++)
+				{
+					// Assign name and value
+					var input = inputData[i];
+					InputNode node = InputLayer[i];
+					node.NodeName = new string(input.InputNodeName);
+					node.outVal = input.Value;
+				}
+
+				return OutputLayer.Select(node => (node.NodeName, ((INeuralNode)node).CalculateValue())).ToArray();
+			}
+
+			throw new Exception("NeuralNetwork Critical Error: Invalid inputs and/or values provided OR not initialized OR outputs not set up.");
+		}
 	}
 
 	/// <summary>
@@ -172,29 +276,21 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class NeuralDataNode : INeuralNode
 	{
-		[JsonPropertyName("input_neurons_link_weights")]
+		[JsonPropertyName("link_weights")]
 		public (INeuralNode NeuralNode, float Weight)[] LinkNodesWeights { get; private set; }
 
-		[JsonIgnore] // CONTINUE HERE ALSO ADD BIAS VALUE
-		public float OutputValue
-		{
-			get // Calculate output value
-			{
-				float output = 0;
-				foreach (var link in LinkNodesWeights) // Iterate through, sum of individual output by weight
-				{
-					INeuralNode dataUnit = link.Item1;
-					float biasWeight = link.Item2;
-					output += biasWeight * dataUnit.OutputValue;
-				}
-				return output;
-			}
-		}
+		[JsonPropertyName("node_bias")]
+		public float NodeBias { get; internal set; }
+
+		[JsonPropertyName("activation_function")]
+		protected GraphStuff.GraphEquation _activationFunc;
 
 		[JsonConstructor]
-		public NeuralDataNode((INeuralNode, float)[] linkWeights)
+		public NeuralDataNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc)
 		{
 			LinkNodesWeights = linkWeights;
+			NodeBias = nodeBias;
+			_activationFunc = activationFunc;
 		}
 
 		public INeuralNode Clone()
@@ -203,7 +299,21 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			for (int i = 0; i < LinkNodesWeights.Length; i++)
 				newLinkWeights[i] = (LinkNodesWeights[i].NeuralNode, LinkNodesWeights[i].Weight);
 
-			return new NeuralDataNode(newLinkWeights);
+			return new NeuralDataNode(newLinkWeights, NodeBias, _activationFunc);
+		}
+
+		public override string ToString() => $"NeuralDataNode(B: {NodeBias}, LC: {LinkNodesWeights.Length})";
+
+		float INeuralNode.CalculateValue()
+		{
+			float output = 0;
+			foreach (var link in LinkNodesWeights) // Iterate through, sum of individual output by weight
+			{
+				INeuralNode dataUnit = link.NeuralNode;
+				float linkWeight = link.Weight;
+				output += linkWeight * dataUnit.CalculateValue();
+			}
+			return _activationFunc(output + NodeBias);
 		}
 	}
 
@@ -213,10 +323,10 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	public class OutputNode : NeuralDataNode, INeuralNode
 	{
 		[JsonPropertyName("output_node_name")]
-		public string NodeName { get; private set; }
+		public string NodeName { get; set; }
 
 		[JsonConstructor]
-		public OutputNode((INeuralNode, float)[] linkWeights, string name = "UNNAMED") : base(linkWeights)
+		public OutputNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc, string name = "UNNAMED") : base(linkWeights, nodeBias, activationFunc)
 		{
 			NodeName = name;
 		}
@@ -227,8 +337,10 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			for (int i = 0; i < LinkNodesWeights.Length; i++)
 				newLinkWeights[i] = (LinkNodesWeights[i].NeuralNode, LinkNodesWeights[i].Weight);
 
-			return new OutputNode(newLinkWeights, new string(NodeName));
+			return new OutputNode(newLinkWeights, NodeBias, _activationFunc, new string(NodeName));
 		}
+
+		public override string ToString() => $"OutputNode(N: {NodeName}, B: {NodeBias})";
 	}
 
 	/// <summary>
@@ -237,24 +349,29 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	public class InputNode : INeuralNode
 	{
 		[JsonIgnore]
-		public float OutputValue { get => outVal.Value; }
-		[JsonIgnore]
-		private float? outVal;
+		internal float? outVal;
+
 		[JsonPropertyName("input_node_name")]
-		public string NodeName { get; private set; } // Just for easy debugging
+		public string NodeName { get; internal set; } // Just for easy debugging
 
 		[JsonConstructor]
-		public InputNode(string name = "UNNAMED", float? inputValue = null)
+		public InputNode(string name = "UNNAMED")
 		{
 			NodeName = name;
-			outVal = inputValue;
 		}
 
-		public override string ToString() => $"InputNode({NodeName}, {outVal})";
+		public override string ToString() => $"InputNode(N: {NodeName}, V: {outVal})";
 
 		public INeuralNode Clone()
 		{
-			return new InputNode(new string(NodeName), outVal);
+			return new InputNode(new string(NodeName));
+		}
+
+		float INeuralNode.CalculateValue()
+		{
+			if (outVal.HasValue)
+				return outVal.Value;
+			throw new Exception("InputNode Critical Error: Input value not provided");
 		}
 	}
 
@@ -263,7 +380,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public interface INeuralNode
 	{
-		public float OutputValue { get; }
 		public INeuralNode Clone();
+		internal float CalculateValue();
 	}
 }
