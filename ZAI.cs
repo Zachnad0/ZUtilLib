@@ -115,32 +115,56 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 						InternalLayers[x, y] = (NeuralDataNode)basedOn.InternalLayers[x, y].Clone();
 
 				// Iterate through all possible links, roll for chance, then addon itself times GuassianEq()
-				void CheckDoModNodeLink(NeuralDataNode node)
+				// Middle layers
+				for (int c = 0; c < InternalLayers.GetLength(0); c++)
 				{
-					for (int i = 0; i < node.LinkNodesWeights.Length; i++)
+					for (int i = 0; i < InternalLayers.GetLength(1); i++)
 					{
-						if (rand.NextDouble() < mutationChance)
+						NeuralDataNode node = InternalLayers[c, i];
+						for (int l = 0; l < node.LinkNodesWeights.Length; l++)
 						{
-							var link = node.LinkNodesWeights[i];
-							link.Weight += GuassianEq() * link.Weight;
-							node.LinkNodesWeights[i] = link;
+							if (rand.NextDouble() < mutationChance)
+							{
+								// Modify link weight value
+								var link = node.LinkNodesWeights[l];
+								link.Weight += GuassianEq() * link.Weight;
+								// Re-assign node reference
+								if (c == 0) // First layer must replace old references with newer ones in input layer
+									link.NeuralNode = InputLayer[l];
+								else
+									link.NeuralNode = InternalLayers[c - 1, l];
+
+								node.LinkNodesWeights[l] = link;
+							}
 						}
 					}
 				}
 
-				// Middle layers
-				foreach (NeuralDataNode node in InternalLayers)
-					CheckDoModNodeLink(node);
-
 				// Output layer
 				foreach (OutputNode node in OutputLayer)
-					CheckDoModNodeLink(node);
+					for (int i = 0; i < node.LinkNodesWeights.Length; i++)
+					{
+						if (rand.NextDouble() < mutationChance)
+						{
+							// Modify link weight value
+							var link = node.LinkNodesWeights[i];
+							link.Weight += GuassianEq() * link.Weight;
+							// Replace link with new instance
+							link.NeuralNode = InternalLayers[InternalLayers.GetLength(0) - 1, i];
+
+							node.LinkNodesWeights[i] = link;
+						}
+					}
 
 				return;
 			}
 
 			throw new Exception("NeuralNetwork InitializeThis Error: Different network scale between this and network to be based on.");
 		}
+
+		public delegate float GraphEquation(float x);
+
+		// public static GraphEquation ReLU // CONTINUE HERE ===========================================
 	}
 
 	/// <summary>
@@ -151,7 +175,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("input_neurons_link_weights")]
 		public (INeuralNode NeuralNode, float Weight)[] LinkNodesWeights { get; private set; }
 
-		[JsonIgnore]
+		[JsonIgnore] // CONTINUE HERE ALSO ADD BIAS VALUE
 		public float OutputValue
 		{
 			get // Calculate output value
