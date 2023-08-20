@@ -10,7 +10,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public enum NDNodeActivFunc
 	{
-		ReLU, Sigmoid, SoftPlus
+		ReLU,
+		Sigmoid,
+		SoftPlus
 	}
 
 	public static class GraphStuff
@@ -60,8 +62,8 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("internal_layers")]
 		public NeuralDataNode[,] InternalLayers { get; private set; }
 
-		[JsonPropertyName("node_graph_type")]
-		public NDNodeActivFunc NodeGraphType { get; private set; }
+		[JsonPropertyName("node_func_type")]
+		public NDNodeActivFunc NodeFuncType { get; private set; }
 
 		[JsonIgnore]
 		private bool _is_initialized = false, _outputs_setup = false;
@@ -73,23 +75,24 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		/// <param name="outputHeight">The number of output nodes.</param>
 		/// <param name="internalHeights">The number of hidden nodes per layer.</param>
 		/// <param name="internalCount">The number of hidden node layers.</param>
-		/// <param name="nodeGraphType">The type of graph to be used for each node's calculation.</param>
-		public NeuralNetwork(int inputHeight, int outputHeight, int internalHeights, int internalCount, NDNodeActivFunc nodeGraphType)
+		/// <param name="nodeFuncType">The type of graph to be used for each node's calculation.</param>
+		public NeuralNetwork(int inputHeight, int outputHeight, int internalHeights, int internalCount, NDNodeActivFunc nodeFuncType)
 		{
-			// Initialize
+			// Set sizes and activation func type
 			InputLayer = new InputNode[inputHeight];
 			OutputLayer = new OutputNode[outputHeight];
 			InternalLayers = new NeuralDataNode[internalCount, internalHeights];
-			NodeGraphType = nodeGraphType;
+			NodeFuncType = nodeFuncType;
 		}
 
 		/// <summary>
 		/// Initializes this neural network by with a completely random set of node connection weights.
 		/// </summary>
+		/// <param name="randomAmplifier">Default 1, changes the max/min random value to be +/- <paramref name="randomAmplifier"/>.</param>
 		public void InitializeThis(float randomAmplifier = 1)
 		{
 			Random rand = new Random();
-			GraphStuff.GraphEquation graphEquation = GraphStuff.GetEquationFromType(NodeGraphType);
+			GraphStuff.GraphEquation graphEquation = GraphStuff.GetEquationFromType(NodeFuncType);
 
 			// Input layer
 			for (int i = 0; i < InputLayer.Length; i++)
@@ -138,22 +141,23 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		}
 
 		/// <summary>
-		/// Initializes this neural network based a provided network, mutated via a Gaussian equation.
+		/// Initializes this neural network based a provided network, mutated randomly through a Gaussian equation.
 		/// </summary>
 		/// <param name="basedOn">The neural network to be derived from.</param>
 		/// <param name="mutationChance">The mutation occurence chance. Should be between 0 and 1.</param>
-		/// <param name="mutationMagnitude">The severity of any mutations that do occur. Should be between 0 and 1.</param>
+		/// <param name="learningRate">The severity of any mutations that do occur. Should be between 0 and 1.</param>
+		/// <param name="mutateRelative">Optionally, mutate biases by a percentage still influenced by learningRate.</param>
 		/// <exception cref="Exception"/>
-		public void InitializeThis(NeuralNetwork basedOn, float mutationChance, float mutationMagnitude)
+		public void InitializeThis(NeuralNetwork basedOn, float mutationChance, float learningRate, bool mutateRelative = false)
 		{
 			Random rand = new Random();
 			mutationChance = MathF.Min(MathF.Abs(mutationChance), 1);
 
-			float GuassianEq()
+			float GuassianChangeEq(float relativeMod)
 			{
-				float α = MathF.Min(MathF.Abs(mutationMagnitude), 1); // Bruh
+				float α = MathF.Abs(learningRate); // Bruh
 				float χ = (2 * (float)rand.NextDouble()) - 1;
-				return MathF.Sign((float)rand.NextDouble() - 0.5f) * (2 * α * MathF.Exp(-2 * MathF.Pow(χ, 2)) - α);
+				return Math.Sign(rand.NextDouble() - 0.5d) * (2 * α * MathF.Exp(-2 * MathF.Pow(χ, 2)) - α) * relativeMod;
 			}
 
 			if (basedOn.InputLayer.Length == InputLayer.Length && basedOn.InternalLayers.Length == InternalLayers.Length && basedOn.OutputLayer.Length == OutputLayer.Length) // To ensure it's sizing is identical
@@ -180,7 +184,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 							// Modify link weight value IF it should
 							if (rand.NextDouble() < mutationChance)
-								link.Weight += GuassianEq() * link.Weight;
+								link.Weight += GuassianChangeEq(mutateRelative ? link.Weight : 1);
 
 							// Re-assign node reference
 							if (c == 0) // First layer must replace old references with newer ones in input layer
@@ -193,7 +197,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 						// Bias
 						if (rand.NextDouble() < mutationChance)
-							node.NodeBias += GuassianEq() * node.NodeBias; // SERIOUS THING THIS MUST BE FIXED AT SOME POINT MAY GET STUCK AT 0 ===================================================
+							node.NodeBias += GuassianChangeEq(mutateRelative ? node.NodeBias : 1);
 					}
 				}
 
@@ -207,7 +211,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 						// Modify link weight value IF it should
 						if (rand.NextDouble() < mutationChance)
-							link.Weight += GuassianEq() * link.Weight;
+							link.Weight += GuassianChangeEq(mutateRelative ? link.Weight : 1);
 
 						// Replace link with new instance
 						link.NeuralNode = InternalLayers[InternalLayers.GetLength(0) - 1, i];
@@ -217,7 +221,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 					// Bias
 					if (rand.NextDouble() < mutationChance)
-						node.NodeBias += GuassianEq() * node.NodeBias; // SERIOUS THING THIS MUST BE FIXED AT SOME POINT MAY GET STUCK AT 0 ===================================================
+						node.NodeBias += GuassianChangeEq(mutateRelative ? node.NodeBias : 1);
 				}
 
 				_is_initialized = true;

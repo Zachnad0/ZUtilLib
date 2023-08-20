@@ -70,6 +70,12 @@ namespace ZUtilLib
 			return false;
 		}
 
+		/// <summary>
+		/// It does exactly what you think, in both possible ways.
+		/// </summary>
+		/// <param name="str">String to be filtered.</param>
+		/// <param name="removeNotIsolate">If true, return a string <b>without</b> the numbers. If false, return a string <b>with</b> only the numbers.</param>
+		/// <returns>A new string of whatever option you chose for <paramref name="removeNotIsolate"/>.</returns>
 		public static string FilterNumbers(this string str, bool removeNotIsolate)
 		{
 			char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };

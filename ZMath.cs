@@ -14,12 +14,12 @@ namespace ZUtilLib.ZMath // OOAC (Object Oriented Algebraic Calculator) system
 
 		public Expression(params IExpressionable[] terms) => Terms = terms.Where(e => e != this && e != null).ToArray();
 
-		public static bool TryParse(string rawEquation, out Expression expression)
-		{
-			// WIP
-			expression = null;
-			return false;
-		}
+		//public static bool TryParse(string rawEquation, out Expression expression)
+		//{
+		//	// WIP ===================================================
+		//	expression = null;
+		//	return false;
+		//}
 
 		public float SubstituteValues(params (Variables, float)[] subs)
 		{
