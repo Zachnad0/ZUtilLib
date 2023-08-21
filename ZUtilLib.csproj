@@ -17,7 +17,7 @@ Features:
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>bad_documentation; Zachnad0; Utility; AI;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>Randomised neural networks can now be generated.
 Number filtering tool added to ZUtils class.</PackageReleaseNotes>

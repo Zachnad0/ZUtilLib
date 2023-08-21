@@ -259,6 +259,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		{
 			if (_is_initialized && _outputs_setup && inputData.Length == InputLayer.Length && !inputData.Any(d => d.Value > 1 || d.Value < 0))
 			{
+				// Name and assign input nodes
 				for (int i = 0; i < inputData.Length; i++)
 				{
 					// Assign name and value
@@ -268,6 +269,13 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					node.outVal = input.Value;
 				}
 
+				// Cleanse internal and output nodes cached values
+				foreach (NeuralDataNode node in InternalLayers)
+					((INeuralNode)node).CachedValue = null;
+				foreach (OutputNode node in OutputLayer)
+					((INeuralNode)node).CachedValue = null;
+				
+				// Calculate and return
 				return OutputLayer.Select(node => (node.NodeName, ((INeuralNode)node).CalculateValue())).ToArray();
 			}
 
@@ -286,9 +294,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("node_bias")]
 		public float NodeBias { get; internal set; }
 
-        float? INeuralNode.CachedValue { get; set; }
+		float? INeuralNode.CachedValue { get; set; } = null;
 
-        [JsonPropertyName("activation_function")]
+		[JsonPropertyName("activation_function")]
 		protected GraphStuff.GraphEquation _activationFunc;
 
 		[JsonConstructor]
@@ -315,11 +323,13 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			float output = 0;
 			foreach (var link in LinkNodesWeights) // Iterate through, sum of individual output by weight
 			{
-				INeuralNode dataUnit = link.NeuralNode;
-				float linkWeight = link.Weight;
-				output += linkWeight * dataUnit.CalculateValue();
+				INeuralNode linkNode = link.NeuralNode;
+				output += link.Weight * (linkNode.CachedValue ?? linkNode.CalculateValue());
 			}
-			return _activationFunc(output + NodeBias); // CONT HERE ========================================
+
+			INeuralNode nn = this;
+			nn.CachedValue = _activationFunc(output + NodeBias);
+			return nn.CachedValue.Value;
 		}
 	}
 
@@ -360,9 +370,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("input_node_name")]
 		public string NodeName { get; internal set; } // Just for easy debugging
 
-        float? INeuralNode.CachedValue { get => outVal; set => _ = value; }
+		float? INeuralNode.CachedValue { get => outVal; set => _ = value; }
 
-        [JsonConstructor]
+		[JsonConstructor]
 		public InputNode(string name = "UNNAMED")
 		{
 			NodeName = name;
