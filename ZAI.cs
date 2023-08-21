@@ -286,7 +286,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("node_bias")]
 		public float NodeBias { get; internal set; }
 
-		[JsonPropertyName("activation_function")]
+        float? INeuralNode.CachedValue { get; set; }
+
+        [JsonPropertyName("activation_function")]
 		protected GraphStuff.GraphEquation _activationFunc;
 
 		[JsonConstructor]
@@ -317,7 +319,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 				float linkWeight = link.Weight;
 				output += linkWeight * dataUnit.CalculateValue();
 			}
-			return _activationFunc(output + NodeBias);
+			return _activationFunc(output + NodeBias); // CONT HERE ========================================
 		}
 	}
 
@@ -358,7 +360,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		[JsonPropertyName("input_node_name")]
 		public string NodeName { get; internal set; } // Just for easy debugging
 
-		[JsonConstructor]
+        float? INeuralNode.CachedValue { get => outVal; set => _ = value; }
+
+        [JsonConstructor]
 		public InputNode(string name = "UNNAMED")
 		{
 			NodeName = name;
@@ -386,5 +390,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	{
 		public INeuralNode Clone();
 		internal float CalculateValue();
+		[JsonIgnore]
+		internal float? CachedValue { get; set; }
 	}
 }
