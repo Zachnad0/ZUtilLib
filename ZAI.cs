@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using System.Linq;
+using ZUtilLib.ZAI.Saving;
 
 namespace ZUtilLib.ZAI // Random AI stuff here
 {
@@ -50,22 +49,17 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class NeuralNetwork
 	{
-		[JsonPropertyName("input_layer")]
 		public InputNode[] InputLayer { get; private set; }
 
-		[JsonPropertyName("output_layer")]
 		public OutputNode[] OutputLayer { get; private set; }
 
 		/// <summary>
 		/// Layer count by height
 		/// </summary>
-		[JsonPropertyName("internal_layers")]
 		public NeuralDataNode[,] InternalLayers { get; private set; }
 
-		[JsonPropertyName("node_func_type")]
 		public NDNodeActivFunc NodeFuncType { get; private set; }
 
-		[JsonIgnore]
 		private bool _is_initialized = false, _outputs_setup = false;
 
 		/// <summary>
@@ -83,6 +77,15 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			OutputLayer = new OutputNode[outputHeight];
 			InternalLayers = new NeuralDataNode[internalCount, internalHeights];
 			NodeFuncType = nodeFuncType;
+		}
+
+		/// <summary>
+		/// This is used to construct a new neural network from a JSON serializable <see cref="PackagedNeuralNetwork"/>. All weights and biases are carried over, and new nodes generated.
+		/// </summary>
+		/// <param name="packedNet">The neural network weights and biases package to be used in this new NN.</param>
+		public NeuralNetwork(PackagedNeuralNetwork packedNet)
+		{
+			// CONTINUE HERE ==============================================================================
 		}
 
 		/// <summary>
@@ -274,7 +277,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					((INeuralNode)node).CachedValue = null;
 				foreach (OutputNode node in OutputLayer)
 					((INeuralNode)node).CachedValue = null;
-				
+
 				// Calculate and return
 				return OutputLayer.Select(node => (node.NodeName, ((INeuralNode)node).CalculateValue())).ToArray();
 			}
@@ -288,18 +291,14 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class NeuralDataNode : INeuralNode
 	{
-		[JsonPropertyName("link_weights")]
 		public (INeuralNode NeuralNode, float Weight)[] LinkNodesWeights { get; private set; }
 
-		[JsonPropertyName("node_bias")]
 		public float NodeBias { get; internal set; }
 
 		float? INeuralNode.CachedValue { get; set; } = null;
 
-		[JsonPropertyName("activation_function")]
 		protected GraphStuff.GraphEquation _activationFunc;
 
-		[JsonConstructor]
 		public NeuralDataNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc)
 		{
 			LinkNodesWeights = linkWeights;
@@ -338,10 +337,8 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class OutputNode : NeuralDataNode, INeuralNode
 	{
-		[JsonPropertyName("output_node_name")]
 		public string NodeName { get; set; }
 
-		[JsonConstructor]
 		public OutputNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc, string name = "UNNAMED") : base(linkWeights, nodeBias, activationFunc)
 		{
 			NodeName = name;
@@ -364,15 +361,12 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class InputNode : INeuralNode
 	{
-		[JsonIgnore]
 		internal float? outVal;
 
-		[JsonPropertyName("input_node_name")]
 		public string NodeName { get; internal set; } // Just for easy debugging
 
 		float? INeuralNode.CachedValue { get => outVal; set => _ = value; }
 
-		[JsonConstructor]
 		public InputNode(string name = "UNNAMED")
 		{
 			NodeName = name;
@@ -400,7 +394,6 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	{
 		public INeuralNode Clone();
 		internal float CalculateValue();
-		[JsonIgnore]
 		internal float? CachedValue { get; set; }
 	}
 }
