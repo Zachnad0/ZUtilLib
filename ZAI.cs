@@ -85,7 +85,58 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		/// <param name="packedNet">The neural network weights and biases package to be used in this new NN.</param>
 		public NeuralNetwork(PackagedNeuralNetwork packedNet)
 		{
-			// CONTINUE HERE ==============================================================================
+			// Is set-up already basically
+			_is_initialized = _outputs_setup = true;
+
+			// Allocation
+			InputLayer = new InputNode[packedNet.InputHeight];
+			OutputLayer = new OutputNode[packedNet.OutputHeight];
+			InternalLayers = new NeuralDataNode[packedNet.InternalCount, packedNet.InternalHeight];
+			GraphStuff.GraphEquation activationFunc = GraphStuff.GetEquationFromType(NodeFuncType = packedNet.NodeActivationFunc);
+
+			// Instantiate nodes, assign weights and biases (💀)
+			// Inputs
+			for (int i = 0; i < packedNet.InputHeight; i++)
+			{
+				InputLayer[i] = new InputNode(packedNet.InputNodeNames[i]);
+			}
+
+			// Internals
+			for (int c = 0; c < packedNet.InternalCount; c++)
+			{
+				for (int i = 0; i < packedNet.InternalHeight; i++)
+				{
+					(INeuralNode, float)[] links;
+					// Allocate then assign links their associated weights and nodes
+					if (c == 0)
+					{
+						links = new (INeuralNode, float)[packedNet.InputHeight];
+						for (int p = 0; p < packedNet.InputHeight; p++)
+							links[p] = (InputLayer[p], packedNet.InternalNodeWeights[c, i][p]); // 3D moment
+					}
+					else
+					{
+						links = new (INeuralNode, float)[packedNet.InternalHeight];
+						for (int p = 0; p < packedNet.InternalHeight; p++)
+							links[p] = (InternalLayers[c - 1, i], packedNet.InternalNodeWeights[c, i][p]);
+					}
+
+					InternalLayers[c, i] = new NeuralDataNode(links, packedNet.InternalNodeBiases[c, i], activationFunc);
+				}
+			}
+
+			// Outputs
+			for (int o = 0; o < packedNet.OutputHeight; o++)
+			{
+				(INeuralNode, float)[] links = new (INeuralNode, float)[packedNet.InternalHeight];
+				// Fill links for this node
+				for (int i = 0; i < packedNet.InternalHeight; i++)
+				{
+					links[i] = (InternalLayers[packedNet.InternalCount - 1, i], packedNet.OutputNodeWeights[o, i]);
+				}
+
+				OutputLayer[o] = new OutputNode(links, packedNet.OutputNodeBiases[o], activationFunc, packedNet.OutputNodeNames[o]);
+			}
 		}
 
 		/// <summary>

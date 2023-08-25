@@ -5,6 +5,7 @@ namespace ZUtilLib.ZAI.Saving
 {
 	public readonly struct PackagedNeuralNetwork
 	{
+		public NDNodeActivFunc NodeActivationFunc { get; }
 		// Node naming
 		public string[] InputNodeNames { get; }
 		public string[] OutputNodeNames { get; }
@@ -25,9 +26,10 @@ namespace ZUtilLib.ZAI.Saving
 		/// <param name="neuralNetwork">The neural netowork to have it's data cloned.</param>
 		public PackagedNeuralNetwork(NeuralNetwork neuralNetwork)
 		{
+			NodeActivationFunc = neuralNetwork.NodeFuncType;
 			// Naming
-			InputNodeNames = neuralNetwork.InputLayer.Select(n => n.NodeName).ToArray();
-			OutputNodeNames = neuralNetwork.OutputLayer.Select(n => n.NodeName).ToArray();
+			InputNodeNames = neuralNetwork.InputLayer.Select(n => new string(n.NodeName)).ToArray();
+			OutputNodeNames = neuralNetwork.OutputLayer.Select(n => new string(n.NodeName)).ToArray();
 
 			// Network Sizing
 			InputHeight = neuralNetwork.InputLayer.Length;
@@ -55,13 +57,13 @@ namespace ZUtilLib.ZAI.Saving
 			}
 
 			// Output nodes
-			for (int h = 0; h < OutputHeight; h++)
+			for (int o = 0; o < OutputHeight; o++)
 			{
-				OutputNodeBiases[h] = neuralNetwork.OutputLayer[h].NodeBias;
-				var links = neuralNetwork.OutputLayer[h].LinkNodesWeights;
-				for (int n = 0; n < InternalHeight; n++)
+				OutputNodeBiases[o] = neuralNetwork.OutputLayer[o].NodeBias;
+				var links = neuralNetwork.OutputLayer[o].LinkNodesWeights;
+				for (int i = 0; i < InternalHeight; i++)
 				{
-					OutputNodeWeights[n, h] = links[h].Weight;
+					OutputNodeWeights[o, i] = links[i].Weight;
 				}
 			}
 		}
@@ -70,7 +72,7 @@ namespace ZUtilLib.ZAI.Saving
 		/// If you are able to read this, you should use the <u><b>other overload constructor</b></u>.
 		/// </summary>
 		[JsonConstructor]
-		public PackagedNeuralNetwork(string[] inputNodeNames, string[] outputNodeNames, float[,][] internalNodeWeights, float[,] internalNodeBiases, float[,] outputNodeWeights, float[] outputNodeBiases, int inputHeight, int internalHeight, int internalCount, int outputHeight)
+		public PackagedNeuralNetwork(NDNodeActivFunc nodeActivationFunc, string[] inputNodeNames, string[] outputNodeNames, float[,][] internalNodeWeights, float[,] internalNodeBiases, float[,] outputNodeWeights, float[] outputNodeBiases, int inputHeight, int internalHeight, int internalCount, int outputHeight)
 		{
 			InputNodeNames = inputNodeNames;
 			OutputNodeNames = outputNodeNames;
@@ -82,6 +84,7 @@ namespace ZUtilLib.ZAI.Saving
 			InternalHeight = internalHeight;
 			InternalCount = internalCount;
 			OutputHeight = outputHeight;
+			NodeActivationFunc = nodeActivationFunc;
 		}
 	}
 }
