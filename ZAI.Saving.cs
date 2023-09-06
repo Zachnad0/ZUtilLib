@@ -6,14 +6,17 @@ namespace ZUtilLib.ZAI.Saving
 	public readonly struct PackagedNeuralNetwork
 	{
 		public NDNodeActivFunc NodeActivationFunc { get; }
+
 		// Node naming
 		public string[] InputNodeNames { get; }
 		public string[] OutputNodeNames { get; }
+
 		// Weights and biases
-		public float[,][] InternalNodeWeights { get; }
-		public float[,] InternalNodeBiases { get; }
-		public float[,] OutputNodeWeights { get; }
+		public float[][][] InternalNodeWeights { get; } // Non-jagged multidimensional arrays are not supported by the Json Serialization
+		public float[][] InternalNodeBiases { get; }
+		public float[][] OutputNodeWeights { get; }
 		public float[] OutputNodeBiases { get; }
+
 		// Network Sizing
 		public int InputHeight { get; }
 		public int InternalHeight { get; }
@@ -39,20 +42,23 @@ namespace ZUtilLib.ZAI.Saving
 
 			// Weights and biases
 			// Allocate
-			InternalNodeBiases = new float[InternalCount, InternalHeight];
-			InternalNodeWeights = new float[InternalCount, InternalHeight][];
+			InternalNodeBiases = new float[InternalCount][];
+			InternalNodeWeights = new float[InternalCount][][];
 			OutputNodeBiases = new float[OutputHeight];
-			OutputNodeWeights = new float[OutputHeight, InternalHeight];
+			OutputNodeWeights = new float[OutputHeight][];
 
 			// Assign
 			// Internal nodes
 			for (int c = 0; c < InternalCount; c++)
 			{
+				InternalNodeBiases[c] = new float[InternalHeight];
+				InternalNodeWeights[c] = new float[InternalHeight][];
+
 				for (int h = 0; h < InternalHeight; h++)
 				{
-					InternalNodeBiases[c, h] = neuralNetwork.InternalLayers[c, h].NodeBias;
+					InternalNodeBiases[c][h] = neuralNetwork.InternalLayers[c, h].NodeBias;
 					var links = neuralNetwork.InternalLayers[c, h].LinkNodesWeights;
-					InternalNodeWeights[c, h] = links.Select(n => n.Weight).ToArray();
+					InternalNodeWeights[c][h] = links.Select(n => n.Weight).ToArray();
 				}
 			}
 
@@ -60,11 +66,7 @@ namespace ZUtilLib.ZAI.Saving
 			for (int o = 0; o < OutputHeight; o++)
 			{
 				OutputNodeBiases[o] = neuralNetwork.OutputLayer[o].NodeBias;
-				var links = neuralNetwork.OutputLayer[o].LinkNodesWeights;
-				for (int i = 0; i < InternalHeight; i++)
-				{
-					OutputNodeWeights[o, i] = links[i].Weight;
-				}
+				OutputNodeWeights[o] = neuralNetwork.OutputLayer[o].LinkNodesWeights.Select(n => n.Weight).ToArray();
 			}
 		}
 
@@ -72,8 +74,9 @@ namespace ZUtilLib.ZAI.Saving
 		/// If you are able to read this, you should use the <u><b>other overload constructor</b></u>.
 		/// </summary>
 		[JsonConstructor]
-		public PackagedNeuralNetwork(NDNodeActivFunc nodeActivationFunc, string[] inputNodeNames, string[] outputNodeNames, float[,][] internalNodeWeights, float[,] internalNodeBiases, float[,] outputNodeWeights, float[] outputNodeBiases, int inputHeight, int internalHeight, int internalCount, int outputHeight)
+		public PackagedNeuralNetwork(NDNodeActivFunc nodeActivationFunc, string[] inputNodeNames, string[] outputNodeNames, float[][][] internalNodeWeights, float[][] internalNodeBiases, float[][] outputNodeWeights, float[] outputNodeBiases, int inputHeight, int internalHeight, int internalCount, int outputHeight)
 		{
+			NodeActivationFunc = nodeActivationFunc;
 			InputNodeNames = inputNodeNames;
 			OutputNodeNames = outputNodeNames;
 			InternalNodeWeights = internalNodeWeights;
@@ -84,7 +87,6 @@ namespace ZUtilLib.ZAI.Saving
 			InternalHeight = internalHeight;
 			InternalCount = internalCount;
 			OutputHeight = outputHeight;
-			NodeActivationFunc = nodeActivationFunc;
 		}
 	}
 }

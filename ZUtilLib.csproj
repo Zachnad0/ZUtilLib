@@ -10,17 +10,16 @@
 Features:
 - Generic utility methods
 - Custom object-oriented algebra and calculus tool
-- Experimental AI stuff
-- Terrible/no documentation</Description>
+- Experimental AI neural network stuff</Description>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageTags>bad_documentation; Zachnad0; Utility; AI;</PackageTags>
+    <PackageTags>Zachnad0; Utility; AI; Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>- Massively increased efficiency of neural network value calculations.
-- Added proper packaged data structure for loading and saving network models in JSON.</PackageReleaseNotes>
+    <PackageReleaseNotes>- FIXED PackagedNeuralNetwork data structure to use purely jagged multi-dimensional arrays so that the serialization actually works.
+</PackageReleaseNotes>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

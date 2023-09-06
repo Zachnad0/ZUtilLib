@@ -112,16 +112,16 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					{
 						links = new (INeuralNode, float)[packedNet.InputHeight];
 						for (int p = 0; p < packedNet.InputHeight; p++)
-							links[p] = (InputLayer[p], packedNet.InternalNodeWeights[c, i][p]); // 3D moment
+							links[p] = (InputLayer[p], packedNet.InternalNodeWeights[c][i][p]); // 3D moment
 					}
 					else
 					{
 						links = new (INeuralNode, float)[packedNet.InternalHeight];
 						for (int p = 0; p < packedNet.InternalHeight; p++)
-							links[p] = (InternalLayers[c - 1, i], packedNet.InternalNodeWeights[c, i][p]);
+							links[p] = (InternalLayers[c - 1, i], packedNet.InternalNodeWeights[c][i][p]);
 					}
 
-					InternalLayers[c, i] = new NeuralDataNode(links, packedNet.InternalNodeBiases[c, i], activationFunc);
+					InternalLayers[c, i] = new NeuralDataNode(links, packedNet.InternalNodeBiases[c][i], activationFunc);
 				}
 			}
 
@@ -132,7 +132,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 				// Fill links for this node
 				for (int i = 0; i < packedNet.InternalHeight; i++)
 				{
-					links[i] = (InternalLayers[packedNet.InternalCount - 1, i], packedNet.OutputNodeWeights[o, i]);
+					links[i] = (InternalLayers[packedNet.InternalCount - 1, i], packedNet.OutputNodeWeights[o][i]);
 				}
 
 				OutputLayer[o] = new OutputNode(links, packedNet.OutputNodeBiases[o], activationFunc, packedNet.OutputNodeNames[o]);
