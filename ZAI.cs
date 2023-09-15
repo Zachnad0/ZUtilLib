@@ -60,7 +60,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 		public NDNodeActivFunc NodeFuncType { get; private set; }
 
-		private bool _is_initialized = false, _outputs_setup = false;
+		private bool _is_initialized = false, _output_naming_setup = false;
 
 		/// <summary>
 		/// Construct a new neural network instance.
@@ -86,7 +86,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		public NeuralNetwork(PackagedNeuralNetwork packedNet)
 		{
 			// Is set-up already basically
-			_is_initialized = _outputs_setup = true;
+			_is_initialized = _output_naming_setup = true;
 
 			// Allocation
 			InputLayer = new InputNode[packedNet.InputHeight];
@@ -148,6 +148,11 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			Random rand = new Random();
 			GraphStuff.GraphEquation graphEquation = GraphStuff.GetEquationFromType(NodeFuncType);
 
+			float GetRandVal()
+			{
+				return (randomAmplifier * 2 * (float)rand.NextDouble()) - randomAmplifier;
+			}
+
 			// Input layer
 			for (int i = 0; i < InputLayer.Length; i++)
 			{
@@ -165,17 +170,17 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 					{
 						linkWeights = new (INeuralNode, float)[InputLayer.Length];
 						for (int l = 0; l < InputLayer.Length; l++)
-							linkWeights[l] = (InputLayer[l], randomAmplifier * (float)rand.NextDouble());
+							linkWeights[l] = (InputLayer[l], GetRandVal());
 
-						InternalLayers[c, i] = new NeuralDataNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
+						InternalLayers[c, i] = new NeuralDataNode(linkWeights, GetRandVal(), graphEquation);
 					}
 					else
 					{
 						linkWeights = new (INeuralNode, float)[InternalLayers.GetLength(1)];
 						for (int l = 0; l < linkWeights.Length; l++)
-							linkWeights[l] = (InternalLayers[c - 1, l], randomAmplifier * (float)rand.NextDouble());
+							linkWeights[l] = (InternalLayers[c - 1, l], GetRandVal());
 
-						InternalLayers[c, i] = new NeuralDataNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
+						InternalLayers[c, i] = new NeuralDataNode(linkWeights, GetRandVal(), graphEquation);
 					}
 				}
 			}
@@ -185,9 +190,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			{
 				var linkWeights = new (INeuralNode, float)[InternalLayers.GetLength(1)];
 				for (int l = 0; l < linkWeights.Length; l++)
-					linkWeights[l] = (InternalLayers[InternalLayers.GetLength(0) - 1, l], randomAmplifier * (float)rand.NextDouble());
+					linkWeights[l] = (InternalLayers[InternalLayers.GetLength(0) - 1, l], GetRandVal());
 
-				OutputLayer[i] = new OutputNode(linkWeights, randomAmplifier * (float)rand.NextDouble(), graphEquation);
+				OutputLayer[i] = new OutputNode(linkWeights, GetRandVal(), graphEquation);
 			}
 
 			_is_initialized = true;
@@ -286,7 +291,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		}
 
 		/// <summary>
-		/// Use this after initialization in order to setup the names of the output nodes.
+		/// <b>ENTIRELY OPTIONAL:</b> Use this after initialization in order to setup the names of the output nodes.
 		/// </summary>
 		/// <param name="names">The names given to the output nodes (order matters).</param>
 		/// <exception cref="Exception"></exception>
@@ -296,7 +301,6 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			{
 				for (int i = 0; i < OutputLayer.Length; i++)
 					OutputLayer[i].NodeName = new string(names[i]); // The garbage collector will not be pleased.
-				_outputs_setup = true;
 				return;
 			}
 
@@ -304,14 +308,14 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		}
 
 		/// <summary>
-		/// After initialization and output name setting up, this is used to input the input data and retrieve the calculated outcome.
+		///<b>USE OVERLOAD FOR UNNAMED OUTPUTS:</b> After initialization and output name setting up, this is used to input the input data and retrieve the calculated outcome.
 		/// </summary>
 		/// <param name="inputData">The names and values for each input node.</param>
 		/// <returns>The names and calculated output values of each output node.</returns>
 		/// <exception cref="Exception"></exception>
 		public (string NodeName, float Value)[] PerformCalculations(params (string InputNodeName, float Value)[] inputData)
 		{
-			if (_is_initialized && _outputs_setup && inputData.Length == InputLayer.Length && !inputData.Any(d => d.Value > 1 || d.Value < 0))
+			if (_is_initialized && _output_naming_setup && inputData.Length == InputLayer.Length)
 			{
 				// Name and assign input nodes
 				for (int i = 0; i < inputData.Length; i++)
@@ -333,7 +337,34 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 				return OutputLayer.Select(node => (node.NodeName, ((INeuralNode)node).CalculateValue())).ToArray();
 			}
 
-			throw new Exception("NeuralNetwork Critical Error: Invalid inputs and/or values provided OR not initialized OR outputs not set up.");
+			throw new Exception("NeuralNetwork Critical Error: Invalid inputs and/or values provided OR not initialized OR outputs not named (perhaps use other overload!)");
+		}
+
+		/// <summary>
+		/// After initialization, this is used to input the input data and retrieve the calculated outcome.
+		/// </summary>
+		/// <param name="inputData">The names and values for each input node.</param>
+		/// <returns>The names and calculated output values of each output node.</returns>
+		/// <exception cref="Exception"></exception>
+		public float[] PerformCalculations(params float[] inputData)
+		{
+			if (_is_initialized && inputData.Length == InputLayer.Length)
+			{
+				// Name and assign input values
+				for (int i = 0; i < inputData.Length; i++)
+					InputLayer[i].outVal = inputData[i];
+
+				// Cleanse internal and output nodes cached values
+				foreach (NeuralDataNode node in InternalLayers)
+					((INeuralNode)node).CachedValue = null;
+				foreach (OutputNode node in OutputLayer)
+					((INeuralNode)node).CachedValue = null;
+
+				// Calculate and return
+				return OutputLayer.Select(node => ((INeuralNode)node).CalculateValue()).ToArray();
+			}
+
+			throw new Exception("NeuralNetwork Critical Error: Invalid number inputs provided OR not initialized");
 		}
 	}
 
