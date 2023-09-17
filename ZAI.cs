@@ -301,6 +301,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			{
 				for (int i = 0; i < OutputLayer.Length; i++)
 					OutputLayer[i].NodeName = new string(names[i]); // The garbage collector will not be pleased.
+				_output_naming_setup = true;
 				return;
 			}
 
