@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using ZUtilLib.ZAI.Saving;
+using System.Threading;
 
 namespace ZUtilLib.ZAI.Training
 {
@@ -37,95 +37,96 @@ namespace ZUtilLib.ZAI.Training
 				return null;
 			}
 
-			return await Task.Run(() =>
+			// Training
+			NeuralNetwork[] topNetsOfGen = startingNetworks.Length > 0 ? startingNetworks : new NeuralNetwork[options.GenPassCount];
+			// Skip first random gen if networks are provided
+			for (int i = startingNetworks.Length > 0 ? 1 : 0; i < options.Generations; i++)
 			{
-				// Training
-				NeuralNetwork[] topNetsOfGen = startingNetworks.Length > 0 ? startingNetworks : new NeuralNetwork[options.GenPassCount];
-				// Skip first random gen if networks are provided
-				for (int i = startingNetworks.Length > 0 ? 1 : 0; i < options.Generations; i++)
+				// Cleanse memory refs
+				double[] currentGenDiffTotals = new double[options.GenSize];
+				NeuralNetwork[] currentGenNNs = new NeuralNetwork[options.GenSize];
+
+				// Fill generation with networks
+				int indexCycler = 0;
+				for (int n = 0; n < options.GenSize; n++)
 				{
-					// Cleanse memory refs
-					double[] currentGenDiffTotals = new double[options.GenSize];
-					NeuralNetwork[] currentGenNNs = new NeuralNetwork[options.GenSize];
+					// CONTINUE HERE (1/2) with threading =====================================================================
+					currentGenNNs[n] = new NeuralNetwork(options.InputHeight, options.OutputHeight, options.InternalHeight, options.InternalCount, options.NodeFuncType);
 
-					// Fill generation with networks
-					int indexCycler = 0;
-					for (int n = 0; n < options.GenSize; n++)
+					if (i == 0)
+						currentGenNNs[n].InitializeThis(options.InitialGenAmp);
+					else if (n < topNetsOfGen.Length) // First whatever count should be exact clones
+						currentGenNNs[n].InitializeThis(topNetsOfGen[n], 0, 1);
+					else // Alternate based on indexCycler
 					{
-						currentGenNNs[n] = new NeuralNetwork(options.InputHeight, options.OutputHeight, options.InternalHeight, options.InternalCount, options.NodeFuncType);
+						currentGenNNs[n].InitializeThis(topNetsOfGen[indexCycler], options.MutateChance, options.LearningRate, options.MutateRelative);
 
-						if (i == 0)
-							currentGenNNs[n].InitializeThis(options.InitialGenAmp);
-						else if (n < topNetsOfGen.Length) // First whatever count should be exact clones
-							currentGenNNs[n].InitializeThis(topNetsOfGen[n], 0, 1);
-						else // Alternate based on indexCycler
-						{
-							currentGenNNs[n].InitializeThis(topNetsOfGen[indexCycler], options.MutateChance, options.LearningRate, options.MutateRelative);
-
-							indexCycler++;
-							if (indexCycler >= options.GenPassCount)
-								indexCycler = 0;
-						}
+						indexCycler++;
+						if (indexCycler >= options.GenPassCount)
+							indexCycler = 0;
 					}
-
-					// Individually assess and tally score based off secret equation
-					for (int n = 0; n < options.GenSize; n++)
-					{
-						currentGenDiffTotals[n] = 0;
-
-						for (int t = 0; t < options.TestsPerNet; t++)
-						{
-							// Iterate and retrieve input values
-							float[] testXVals = new float[options.InputHeight];
-							for (int tInp = 0; tInp < options.InputHeight; tInp++)
-							{
-								testXVals[tInp] = (options.TestRangeMax - options.TestRangeMin) / options.TestsPerNet * t + options.TestRangeMin;
-							}
-
-							// Iterate and addon calculated outputs
-							for (int tOut = 0; tOut < options.OutputHeight; tOut++)
-								currentGenDiffTotals[n] += Math.Pow(Math.Abs(currentGenNNs[n].PerformCalculations(testXVals)[tOut] - testFunc(testXVals)[tOut]), 2);
-						}
-					};
-
-					// Assess and decide best network, the lower the score the better
-					List<int> topNetIndices = Enumerable.Range(0, options.GenSize).ToList();
-					// Order from lowest to highest score
-					topNetIndices.Sort((a, b) =>
-					{
-						int val;
-						try // Yikes I have no idea how but for some reason they can be infinity... Fix this anomaly later???
-						{
-							val = Math.Sign(currentGenDiffTotals[a] - currentGenDiffTotals[b]);
-						}
-						catch
-						{
-							val = currentGenDiffTotals[a] > currentGenDiffTotals[b] ? 1 : -1;
-							val = currentGenDiffTotals[a] == currentGenDiffTotals[b] ? 0 : val;
-						}
-						return val;
-					});
-					//topNetIndices.RemoveRange(options.GenPassCount, topNetIndices.Count - options.GenPassCount);
-
-					topNetsOfGen = new NeuralNetwork[options.GenPassCount];
-					for (int n = 0; n < options.GenPassCount; n++)
-						topNetsOfGen[n] = currentGenNNs[topNetIndices[n]];
 				}
 
-				return topNetsOfGen;
-			});
+				// Individually assess and tally score based off secret equation
+				for (int n = 0; n < options.GenSize; n++)
+				{
+					// CONTINUE HERE (2/2) with threading ====================================================
+					currentGenDiffTotals[n] = 0;
+
+					for (int t = 0; t < options.TestsPerNet; t++)
+					{
+						// Iterate and retrieve input values
+						float[] testInpVals = new float[options.InputHeight];
+						for (int tInp = 0; tInp < options.InputHeight; tInp++)
+						{
+							testInpVals[tInp] = (options.TestRangeMax - options.TestRangeMin) / options.TestsPerNet * t + options.TestRangeMin;
+						}
+
+						// Iterate through and comapre calculated outputs with actual
+						float[] testOutVals = currentGenNNs[n].PerformCalculations(testInpVals);
+						float[] actualOutVals = testFunc(testInpVals);
+						for (int v = 0; v < options.OutputHeight; v++)
+							currentGenDiffTotals[n] += Math.Pow(Math.Abs(testOutVals[v] - actualOutVals[v]), 2);
+					}
+				};
+
+				// Assess and decide best network, the lower the score the better
+				List<int> topNetIndices = Enumerable.Range(0, options.GenSize).ToList();
+				// Order from lowest to highest score
+				topNetIndices.Sort((a, b) =>
+				{
+					int val;
+					try // Yikes I have no idea how but for some reason they can be infinity... Fix this anomaly later???
+					{
+						val = Math.Sign(currentGenDiffTotals[a] - currentGenDiffTotals[b]);
+					}
+					catch
+					{
+						val = currentGenDiffTotals[a] > currentGenDiffTotals[b] ? 1 : -1;
+						val = currentGenDiffTotals[a] == currentGenDiffTotals[b] ? 0 : val;
+					}
+					return val;
+				});
+				//topNetIndices.RemoveRange(options.GenPassCount, topNetIndices.Count - options.GenPassCount);
+
+				topNetsOfGen = new NeuralNetwork[options.GenPassCount];
+				for (int n = 0; n < options.GenPassCount; n++)
+					topNetsOfGen[n] = currentGenNNs[topNetIndices[n]];
+			}
+
+			return topNetsOfGen;
 		}
 
 		private static bool CheckCompatibleStandardParams(NeuralNetTrainingOptions options, NeuralNetwork[] startNets)
 		{
-			bool c1 = startNets?.All(n =>
+			bool c1 = startNets.All(n =>
 				n.InputLayer.Length == options.InputHeight &&
 				n.InternalLayers.GetLength(0) == options.InternalCount &&
 				n.InternalLayers.GetLength(1) == options.InternalHeight &&
 				n.OutputLayer.Length == options.OutputHeight &&
 				n.NodeFuncType == options.NodeFuncType
-			) ?? false;
-			bool c2 = startNets?.Length <= options.GenSize && startNets?.Length > 0;
+			);
+			bool c2 = startNets?.Length <= options.GenSize;
 			return c1 && c2;
 		}
 	}
@@ -161,8 +162,14 @@ namespace ZUtilLib.ZAI.Training
 			InitialGenAmp = initialGenAmp > 0 ? initialGenAmp : throw new ArgumentOutOfRangeException();
 			TestRangeMin = testRangeMin;
 			TestRangeMax = testRangeMin < testRangeMax ? testRangeMax : throw new ArgumentOutOfRangeException();
-			Generations = iterateByGenerations && generations > 0 ? generations : throw new Exception("IterateByGenerations is true but generations is unset/invalid");
-			MinTargAccuracy = !iterateByGenerations && minTargAccuracy > 0 && minTargAccuracy != float.PositiveInfinity ? minTargAccuracy : throw new Exception("IterateByGenerations is false but MinTargetAccuracy is unset/invalid");
+			if (iterateByGenerations)
+			{
+				Generations = generations > 0 ? generations : throw new Exception("IterateByGenerations is true but generations is unset/invalid");
+			}
+			else
+			{
+				MinTargAccuracy = minTargAccuracy > 0 && minTargAccuracy != float.PositiveInfinity ? minTargAccuracy : throw new Exception("IterateByGenerations is false but MinTargetAccuracy is unset/invalid");
+			}
 		}
 	}
 }
