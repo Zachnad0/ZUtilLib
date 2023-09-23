@@ -41,7 +41,16 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 		public static float ReLUEquation(float x) => MathF.Max(0, x);
 		public static float SigmoidEquation(float x) => 1 / (1 + MathF.Exp(-x));
-		public static float SoftPlusEquation(float x) => MathF.Log(1 + MathF.Exp(x));
+		public static float SoftPlusEquation(float x)
+		{
+			float y = MathF.Log(1 + MathF.Exp(x));
+			return y switch
+			{
+				float.PositiveInfinity => float.MaxValue,
+				float.NegativeInfinity => float.MinValue,
+				_ => y,
+			};
+		}
 	}
 
 	/// <summary>
@@ -411,6 +420,11 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 			INeuralNode nn = this;
 			nn.CachedValue = _activationFunc(output + NodeBias);
+			//if (float.IsInfinity(nn.CachedValue.Value))
+			//{
+			//	System.Diagnostics.Debugger.Launch();
+			//	Console.WriteLine("bozo");
+			//}
 			return nn.CachedValue.Value;
 		}
 	}

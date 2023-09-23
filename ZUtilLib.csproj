@@ -10,7 +10,7 @@
 Features:
 - Generic utility methods
 - Custom object-oriented algebra and calculus tool
-- Experimental AI neural network stuff</Description>
+- Experimental AI neural networks plus training utils</Description>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
     <PackageIcon>icon.png</PackageIcon>
@@ -27,12 +27,18 @@ Features:
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DebugType>none</DebugType>
+    <DebugType>full</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>none</DebugType>
+    <DebugType>full</DebugType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="TESTING\**" />
+    <EmbeddedResource Remove="TESTING\**" />
+    <None Remove="TESTING\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Remove="icon.png" />

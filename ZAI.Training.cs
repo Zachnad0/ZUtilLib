@@ -14,6 +14,10 @@ namespace ZUtilLib.ZAI.Training
 
 	public static class NeuralNetTraining
 	{
+		private static readonly object
+			_lockOutputs = new object(),
+			_lockIndexCyclerChange = new object();
+
 		/// <summary>
 		/// Train this network on a function with <u>strictly</u> the same number of inputs and outputs as the original networks (if provided, otherwise they're randomly generated).
 		/// </summary>
@@ -42,53 +46,23 @@ namespace ZUtilLib.ZAI.Training
 			// Skip first random gen if networks are provided
 			for (int i = startingNetworks.Length > 0 ? 1 : 0; i < options.Generations; i++)
 			{
-				// Cleanse memory refs
-				double[] currentGenDiffTotals = new double[options.GenSize];
-				NeuralNetwork[] currentGenNNs = new NeuralNetwork[options.GenSize];
+				// Declare current gen data
+				(NeuralNetwork NeuralNet, double NetDiffTotal)[] currentGenData = new (NeuralNetwork NeuralNet, double NetDiffTotal)[options.GenSize];
 
-				// Fill generation with networks
-				int indexCycler = 0;
-				for (int n = 0; n < options.GenSize; n++)
+				// Concurrent network intialization and testing
+				currentGenData = await Task.Run(() =>
 				{
-					// CONTINUE HERE (1/2) with threading =====================================================================
-					currentGenNNs[n] = new NeuralNetwork(options.InputHeight, options.OutputHeight, options.InternalHeight, options.InternalCount, options.NodeFuncType);
+					(NeuralNetwork NNet, double DiffTotal)[] outputs = new (NeuralNetwork NNet, double DiffTotal)[options.GenSize];
 
-					if (i == 0)
-						currentGenNNs[n].InitializeThis(options.InitialGenAmp);
-					else if (n < topNetsOfGen.Length) // First whatever count should be exact clones
-						currentGenNNs[n].InitializeThis(topNetsOfGen[n], 0, 1);
-					else // Alternate based on indexCycler
+					Parallel.For(0, options.GenSize, new ParallelOptions() { MaxDegreeOfParallelism = 1 }, (n) =>
 					{
-						currentGenNNs[n].InitializeThis(topNetsOfGen[indexCycler], options.MutateChance, options.LearningRate, options.MutateRelative);
+						var result = NetTestingOperation(testFunc, options, topNetsOfGen, i, n);
+						lock (_lockOutputs)
+							outputs[n] = result; // Assign to outputs
+					});
 
-						indexCycler++;
-						if (indexCycler >= options.GenPassCount)
-							indexCycler = 0;
-					}
-				}
-
-				// Individually assess and tally score based off secret equation
-				for (int n = 0; n < options.GenSize; n++)
-				{
-					// CONTINUE HERE (2/2) with threading ====================================================
-					currentGenDiffTotals[n] = 0;
-
-					for (int t = 0; t < options.TestsPerNet; t++)
-					{
-						// Iterate and retrieve input values
-						float[] testInpVals = new float[options.InputHeight];
-						for (int tInp = 0; tInp < options.InputHeight; tInp++)
-						{
-							testInpVals[tInp] = (options.TestRangeMax - options.TestRangeMin) / options.TestsPerNet * t + options.TestRangeMin;
-						}
-
-						// Iterate through and comapre calculated outputs with actual
-						float[] testOutVals = currentGenNNs[n].PerformCalculations(testInpVals);
-						float[] actualOutVals = testFunc(testInpVals);
-						for (int v = 0; v < options.OutputHeight; v++)
-							currentGenDiffTotals[n] += Math.Pow(Math.Abs(testOutVals[v] - actualOutVals[v]), 2);
-					}
-				};
+					return outputs;
+				});
 
 				// Assess and decide best network, the lower the score the better
 				List<int> topNetIndices = Enumerable.Range(0, options.GenSize).ToList();
@@ -98,23 +72,64 @@ namespace ZUtilLib.ZAI.Training
 					int val;
 					try // Yikes I have no idea how but for some reason they can be infinity... Fix this anomaly later???
 					{
-						val = Math.Sign(currentGenDiffTotals[a] - currentGenDiffTotals[b]);
+						val = Math.Sign(currentGenData[a].NetDiffTotal - currentGenData[b].NetDiffTotal);
 					}
 					catch
 					{
-						val = currentGenDiffTotals[a] > currentGenDiffTotals[b] ? 1 : -1;
-						val = currentGenDiffTotals[a] == currentGenDiffTotals[b] ? 0 : val;
+						val = currentGenData[a].NetDiffTotal > currentGenData[b].NetDiffTotal ? 1 : -1;
+						val = currentGenData[a].NetDiffTotal == currentGenData[b].NetDiffTotal ? 0 : val;
 					}
 					return val;
 				});
-				//topNetIndices.RemoveRange(options.GenPassCount, topNetIndices.Count - options.GenPassCount);
 
 				topNetsOfGen = new NeuralNetwork[options.GenPassCount];
 				for (int n = 0; n < options.GenPassCount; n++)
-					topNetsOfGen[n] = currentGenNNs[topNetIndices[n]];
+					topNetsOfGen[n] = currentGenData[topNetIndices[n]].NeuralNet;
 			}
 
 			return topNetsOfGen;
+		}
+
+		private static (NeuralNetwork NNet, double DiffTotal) NetTestingOperation(TrainingFunctionFormat testFunc, NeuralNetTrainingOptions options, NeuralNetwork[] topNetsOfGen, int i, int n)
+		{
+			// Generate network
+			NeuralNetwork thisNetwork;
+			thisNetwork = new NeuralNetwork(options.InputHeight, options.OutputHeight, options.InternalHeight, options.InternalCount, options.NodeFuncType);
+
+			if (i == 0)
+				thisNetwork.InitializeThis(options.InitialGenAmp);
+			else if (n < topNetsOfGen.Length) // First whatever count should be exact clones
+				thisNetwork.InitializeThis(topNetsOfGen[n], 0, 1);
+			else // Alternate based on thing
+			{
+				int topNetIndex = n % options.GenPassCount;
+
+				thisNetwork.InitializeThis(topNetsOfGen[topNetIndex], options.MutateChance, options.LearningRate, options.MutateRelative);
+			}
+
+			// Test and evaluate netowork
+			double thisNetDiffTotal = 0;
+			for (int t = 0; t < options.TestsPerNet; t++)
+			{
+				// Iterate and retrieve input values
+				float[] testInpVals = new float[options.InputHeight];
+				for (int tInp = 0; tInp < options.InputHeight; tInp++)
+				{
+					if (options.RandomInRange) // Use just a random value if specified
+						testInpVals[tInp] = (float)new Random().NextDouble() * (options.TestRangeMax - options.TestRangeMin) + options.TestRangeMin;
+					else
+						testInpVals[tInp] = (options.TestRangeMax - options.TestRangeMin) / options.TestsPerNet * t + options.TestRangeMin;
+				}
+
+				// Iterate through and compare calculated outputs with actual
+				float[] testOutVals = thisNetwork.PerformCalculations(testInpVals);
+				float[] actualOutVals = testFunc(testInpVals);
+
+				for (int v = 0; v < options.OutputHeight; v++)
+					thisNetDiffTotal += Math.Pow(Math.Abs(testOutVals[v] - actualOutVals[v]), 2);
+			}
+
+			return (thisNetwork, thisNetDiffTotal);
 		}
 
 		private static bool CheckCompatibleStandardParams(NeuralNetTrainingOptions options, NeuralNetwork[] startNets)
@@ -138,11 +153,34 @@ namespace ZUtilLib.ZAI.Training
 	{
 		public readonly int GenSize, GenPassCount, Generations, InputHeight, OutputHeight, InternalHeight, InternalCount, TestsPerNet;
 		public readonly float LearningRate, MutateChance, InitialGenAmp, TestRangeMin, TestRangeMax, MinTargAccuracy;
-		public readonly bool MutateRelative, IterateByGenerations;
+		public readonly bool MutateRelative, IterateByGenerations, RandomInRange;
 		public readonly NDNodeActivFunc NodeFuncType;
-		// InitialGenAmp, TestRangeMin/Max, and Generations XOR MinTargAccuracy are OPTIONAL
+		// InitialGenAmp, TestRangeMin/Max AND RandomInRange, and Generations XOR MinTargAccuracy are OPTIONAL
 
-		public NeuralNetTrainingOptions(int genSize, int genPassCount, int testsPerNet, int inputHeight, int outputHeight, int internalHeight, int internalCount, float learningRate, float mutateChance, NDNodeActivFunc nodeFuncType, bool mutateRelative, bool iterateByGenerations, float initialGenAmp = 1, float testRangeMin = 0, float testRangeMax = 1, int generations = 0, float minTargAccuracy = float.PositiveInfinity)
+		/// <summary>
+		/// This is for setting all of the options for training neural networks via my methods.
+		/// </summary>
+		/// <param name="genSize">The number of networks in each generation.</param>
+		/// <param name="genPassCount">The number of top networks to be used cloned and varied from, from each generation. Also the number of networks returned.</param>
+		/// <param name="testsPerNet">How many tests are done to evaluate each network.</param>
+		/// <param name="inputHeight">Number of input nodes.</param>
+		/// <param name="outputHeight">Number of output nodes.</param>
+		/// <param name="internalHeight">Number of internal nodes per layer.</param>
+		/// <param name="internalCount">Number of layers of internal nodes.</param>
+		/// <param name="learningRate">The magnitude of network vartaion mutations.</param>
+		/// <param name="mutateChance">The chance for each weight and bias to be mutated.</param>
+		/// <param name="nodeFuncType">The activation function used by each node within the network.</param>
+		/// <param name="mutateRelative">Mutations are done relatively to their current value, instead of straight up.</param>
+		/// <param name="iterateByGenerations">If true, then the testing will end after the specified number of networks from parameter <paramref name="generations"/>. If false, then the test will continue until the minimum target accuracy has been achieved as per <paramref name="minTargAccuracy"/>. <u><b>JUST USE TRUE FOR THE TIME BEING STILL WIP FOR THE OTHER ALSO IT IS PROBABLY A TERRIBLE IDEA UNTIL DYNAMIC LEARNING RATE IS ADDED BUT THAT AIN'T NOW SO YEA JUST SET THIS TO TRUE TRUST ME.</b></u></param>
+		/// <param name="initialGenAmp">The amplitude of values set for random initial network generation.</param>
+		/// <param name="testRangeMin">The minimum value for all inputs used for testing.</param>
+		/// <param name="testRangeMax">The maximum value for all outputs used for testing.</param>
+		/// <param name="randomInRange">Whether or not for each test to use a randomly generated input value versus an incremental one.</param>
+		/// <param name="generations">The number of generations allowed for the training to run.</param>
+		/// <param name="minTargAccuracy"><u><b>DON'T USE THIS IN THIS VERSION.</b></u> When the top network of all time reaches this average accuracy value, then the training will end.</param>
+		/// <exception cref="ArgumentOutOfRangeException"></exception>
+		/// <exception cref="Exception"></exception>
+		public NeuralNetTrainingOptions(int genSize, int genPassCount, int testsPerNet, int inputHeight, int outputHeight, int internalHeight, int internalCount, float learningRate, float mutateChance, NDNodeActivFunc nodeFuncType, bool mutateRelative, bool iterateByGenerations, float initialGenAmp = 1, float testRangeMin = 0, float testRangeMax = 1, bool randomInRange = true, int generations = 0, float minTargAccuracy = float.PositiveInfinity)
 		{
 			// Essentials
 			GenSize = genSize;
@@ -160,6 +198,7 @@ namespace ZUtilLib.ZAI.Training
 
 			// Optional stuff
 			InitialGenAmp = initialGenAmp > 0 ? initialGenAmp : throw new ArgumentOutOfRangeException();
+			RandomInRange = randomInRange;
 			TestRangeMin = testRangeMin;
 			TestRangeMax = testRangeMin < testRangeMax ? testRangeMax : throw new ArgumentOutOfRangeException();
 			if (iterateByGenerations)
