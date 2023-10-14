@@ -14,9 +14,35 @@ namespace ZUtilLib.ZAI.Training
 
 	public static class NeuralNetTraining
 	{
-		private static readonly object
-			_lockOutputs = new object(),
-			_lockIndexCyclerChange = new object();
+		private static readonly object _lockOutputs = new object();
+
+		/// <summary>
+		/// Generate a generation of networks based on the provided networks and options.
+		/// </summary>
+		/// <param name="options">Options to define derivation parameters.</param>
+		/// <param name="derivedNetworks">Networks for this generation to be derived from.</param>
+		/// <returns>Array of size <see cref="NeuralNetTrainingOptions.GenSize"/> as specified in <paramref name="options"/>.</returns>
+		public static NeuralNetwork[] GenerateDerivedGeneration(NeuralNetTrainingOptions options, params NeuralNetwork[] derivedNetworks)
+		{
+			// Check
+			if (!CheckCompatibleStandardParams(options, derivedNetworks))
+				throw new ArgumentException("Provided networks are invalid.");
+
+			// Generate
+			NeuralNetwork[] genNets = new NeuralNetwork[options.GenSize];
+			for (int n = 0; n < options.GenSize; n++)
+			{
+				genNets[n] = new NeuralNetwork(options.InputHeight, options.OutputHeight, options.InternalHeight, options.InternalCount, options.NodeFuncType);
+				if (n < derivedNetworks.Length)
+					// Exactly clone first networks
+					genNets[n].InitializeThis(derivedNetworks[n], 0, 0);
+				else
+					// Descend from iterated derived network with mutations
+					genNets[n].InitializeThis(derivedNetworks[n % derivedNetworks.Length], options.MutateChance, options.LearningRate, options.MutateRelative);
+			}
+
+			return genNets;
+		}
 
 		/// <summary>
 		/// Train this network on a function with <u>strictly</u> the same number of inputs and outputs as the original networks (if provided, otherwise they're randomly generated).
@@ -54,7 +80,9 @@ namespace ZUtilLib.ZAI.Training
 				{
 					(NeuralNetwork NNet, double DiffTotal)[] outputs = new (NeuralNetwork NNet, double DiffTotal)[options.GenSize];
 
-					Parallel.For(0, options.GenSize, new ParallelOptions() { MaxDegreeOfParallelism = 1 }, (n) =>
+					Parallel.For(0, options.GenSize,
+						//new ParallelOptions() { MaxDegreeOfParallelism = 1 },
+						(n) =>
 					{
 						var result = NetTestingOperation(testFunc, options, topNetsOfGen, i, n);
 						lock (_lockOutputs)
@@ -128,6 +156,9 @@ namespace ZUtilLib.ZAI.Training
 				for (int v = 0; v < options.OutputHeight; v++)
 					thisNetDiffTotal += Math.Pow(Math.Abs(testOutVals[v] - actualOutVals[v]), 2);
 			}
+			// Ensure it's validity!
+			if (double.IsNaN(thisNetDiffTotal) || double.IsInfinity(thisNetDiffTotal))
+				thisNetDiffTotal = float.MaxValue;
 
 			return (thisNetwork, thisNetDiffTotal);
 		}

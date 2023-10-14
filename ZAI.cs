@@ -58,14 +58,14 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// </summary>
 	public class NeuralNetwork
 	{
-		public InputNode[] InputLayer { get; private set; }
+		internal InputNode[] InputLayer { get; private set; }
 
-		public OutputNode[] OutputLayer { get; private set; }
+		internal OutputNode[] OutputLayer { get; private set; }
 
 		/// <summary>
 		/// Layer count by height
 		/// </summary>
-		public NeuralDataNode[,] InternalLayers { get; private set; }
+		internal NeuralDataNode[,] InternalLayers { get; private set; }
 
 		public NDNodeActivFunc NodeFuncType { get; private set; }
 
@@ -339,9 +339,9 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 				// Cleanse internal and output nodes cached values
 				foreach (NeuralDataNode node in InternalLayers)
-					((INeuralNode)node).CachedValue = null;
+					node.CachedValue = null;
 				foreach (OutputNode node in OutputLayer)
-					((INeuralNode)node).CachedValue = null;
+					node.CachedValue = null;
 
 				// Calculate and return
 				return OutputLayer.Select(node => (node.NodeName, ((INeuralNode)node).CalculateValue())).ToArray();
@@ -366,12 +366,16 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 				// Cleanse internal and output nodes cached values
 				foreach (NeuralDataNode node in InternalLayers)
-					((INeuralNode)node).CachedValue = null;
+					node.CachedValue = null;
 				foreach (OutputNode node in OutputLayer)
-					((INeuralNode)node).CachedValue = null;
+					node.CachedValue = null;
 
 				// Calculate and return
-				return OutputLayer.Select(node => ((INeuralNode)node).CalculateValue()).ToArray();
+				float[] outputs = new float[OutputLayer.Length];
+				for (int i = 0; i < OutputLayer.Length; i++)
+					outputs[i] = OutputLayer[i].CalculateValue();
+
+				return outputs;
 			}
 
 			throw new Exception("NeuralNetwork Critical Error: Invalid number inputs provided OR not initialized");
@@ -381,13 +385,13 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// <summary>
 	/// I mean yea it is called a neuron, but uh skill issue
 	/// </summary>
-	public class NeuralDataNode : INeuralNode
+	internal class NeuralDataNode : INeuralNode
 	{
 		public (INeuralNode NeuralNode, float Weight)[] LinkNodesWeights { get; private set; }
 
 		public float NodeBias { get; internal set; }
 
-		float? INeuralNode.CachedValue { get; set; } = null;
+		public float? CachedValue { get; set; }
 
 		protected GraphStuff.GraphEquation _activationFunc;
 
@@ -409,7 +413,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 
 		public override string ToString() => $"NeuralDataNode(B: {NodeBias}, LC: {LinkNodesWeights.Length})";
 
-		float INeuralNode.CalculateValue()
+		public float CalculateValue()
 		{
 			float output = 0;
 			foreach (var link in LinkNodesWeights) // Iterate through, sum of individual output by weight
@@ -418,21 +422,16 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 				output += link.Weight * (linkNode.CachedValue ?? linkNode.CalculateValue());
 			}
 
-			INeuralNode nn = this;
-			nn.CachedValue = _activationFunc(output + NodeBias);
-			//if (float.IsInfinity(nn.CachedValue.Value))
-			//{
-			//	System.Diagnostics.Debugger.Launch();
-			//	Console.WriteLine("bozo");
-			//}
-			return nn.CachedValue.Value;
+			float nVal = _activationFunc(output + NodeBias);
+			CachedValue = nVal;
+			return CachedValue.Value;
 		}
 	}
 
 	/// <summary>
 	/// Derived directly from a normal node, it just has a name property too.
 	/// </summary>
-	public class OutputNode : NeuralDataNode, INeuralNode
+	internal class OutputNode : NeuralDataNode, INeuralNode
 	{
 		public string NodeName { get; set; }
 
@@ -456,7 +455,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// <summary>
 	/// This is to be used in the input layer of the NN
 	/// </summary>
-	public class InputNode : INeuralNode
+	internal class InputNode : INeuralNode
 	{
 		internal float? outVal;
 
@@ -487,10 +486,10 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 	/// <summary>
 	/// All neural nodes implement this.
 	/// </summary>
-	public interface INeuralNode
+	internal interface INeuralNode
 	{
-		public INeuralNode Clone();
-		internal float CalculateValue();
-		internal float? CachedValue { get; set; }
+		INeuralNode Clone();
+		float CalculateValue();
+		float? CachedValue { get; set; }
 	}
 }

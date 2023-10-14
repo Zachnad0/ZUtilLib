@@ -12,43 +12,54 @@ namespace LIBRARYTESTING
 	{
 		public static async Task Main(string[] args)
 		{
-			Console.WriteLine("Start");
-
-			NeuralNetwork testNet = new NeuralNetwork(3, 3, 5, 2, NDNodeActivFunc.ReLU);
-			testNet.InitializeThis();
-			testNet.SetupOutputs("alpha", "beta", "gamma");
-			(string NodeName, float Value)[] result = testNet.PerformCalculations(("in1", 0.2f), ("in2", 0.3f), ("in3", 0.4f));
-			NeuralNetwork secondTestNet = new NeuralNetwork(3, 3, 5, 2, NDNodeActivFunc.ReLU);
-			secondTestNet.InitializeThis(testNet, 1, 0.1f, true);
-			secondTestNet.SetupOutputs("delta", "epsilon", "zeta");
-			var result2 = secondTestNet.PerformCalculations(("in1", 0.2f), ("in2", 0.3f), ("in3", 0.4f));
-
-			PackagedNeuralNetwork pNN1 = new PackagedNeuralNetwork(testNet);
-			PackagedNeuralNetwork pNN2 = new PackagedNeuralNetwork(secondTestNet);
-
-			NeuralNetwork cn1, cn2;
-			cn1 = new NeuralNetwork(pNN1);
-			cn2 = new NeuralNetwork(pNN2);
-
-			NeuralNetTrainingOptions nNTO = new NeuralNetTrainingOptions(100, 5, 80, 1, 1, 5, 3, 0.6f, 0.7f, NDNodeActivFunc.SoftPlus, false, true, 2.5f, -10, 10, generations: 10000);
-			NeuralNetwork[] topNets = await NeuralNetTraining.TrainNetworksOnFunc(MysteryFunc, nNTO);
-
-			// Check effectiveness of top networks
-			for (int n = 0; n < topNets.Length; n++)
+			do
 			{
-				float diff = 0;
-				for (int i = 0; i < 100; i++)
-				{
-					float x = (10 - -10) / 100f * i + -10f;
-					float y1 = topNets[n].PerformCalculations(x)[0];
-					float y2 = MysteryFunc(x)[0];
-					diff += MathF.Abs(y1 - y2);
-				}
-				//diff /= 100;
-				Console.WriteLine($"Avg diffs: #{n}: {diff}");
-			}
+				Console.WriteLine("Start");
 
-			Console.WriteLine("Finished");
+				//NeuralNetwork testNet = new NeuralNetwork(3, 3, 5, 2, NDNodeActivFunc.ReLU);
+				//testNet.InitializeThis();
+				//testNet.SetupOutputs("alpha", "beta", "gamma");
+				//(string NodeName, float Value)[] result = testNet.PerformCalculations(("in1", 0.2f), ("in2", 0.3f), ("in3", 0.4f));
+				//NeuralNetwork secondTestNet = new NeuralNetwork(3, 3, 5, 2, NDNodeActivFunc.ReLU);
+				//secondTestNet.InitializeThis(testNet, 1, 0.1f, true);
+				//secondTestNet.SetupOutputs("delta", "epsilon", "zeta");
+				//var result2 = secondTestNet.PerformCalculations(("in1", 0.2f), ("in2", 0.3f), ("in3", 0.4f));
+
+				//PackagedNeuralNetwork pNN1 = new PackagedNeuralNetwork(testNet);
+				//PackagedNeuralNetwork pNN2 = new PackagedNeuralNetwork(secondTestNet);
+
+				//NeuralNetwork cn1, cn2;
+				//cn1 = new NeuralNetwork(pNN1);
+				//cn2 = new NeuralNetwork(pNN2);
+
+				DateTime start = DateTime.Now;
+				NeuralNetTrainingOptions nNTO = new NeuralNetTrainingOptions(100, 5, 70, 1, 1, 4, 4, 1, 0.6f, NDNodeActivFunc.ReLU, false, true, 2.5f, -10, 10, randomInRange: true, generations: 1000);
+				NeuralNetwork[] topNets = await NeuralNetTraining.TrainNetworksOnFunc(MysteryFunc, nNTO);
+				TimeSpan timeForOperation = DateTime.Now - start;
+				Console.WriteLine($"Time for operation: {(decimal)timeForOperation.TotalSeconds} seconds");
+
+				// Check effectiveness of top networks
+				for (int n = 0; n < topNets.Length; n++)
+				{
+					float diff = 0, highestDiff = float.NegativeInfinity, lowestDiff = float.PositiveInfinity;
+					for (int i = 0; i < 100; i++)
+					{
+						float x = (10 - -10) / 100f * i + -10f;
+						float y1 = topNets[n].PerformCalculations(x)[0];
+						float y2 = MysteryFunc(x)[0];
+						float d = MathF.Abs(y1 - y2);
+						diff += d;
+						if (d > highestDiff)
+							highestDiff = d;
+						if (d < lowestDiff)
+							lowestDiff = d;
+					}
+					diff /= 100;
+					Console.WriteLine($"TopNet#{n}:\tAvgDiff: {diff:F4}\t\tHighestDiff: {highestDiff:F4}\tLowestDiff: {lowestDiff:F4}");
+				}
+
+				Console.WriteLine("Finished\n[R]estart?");
+			} while (Console.ReadKey(true).KeyChar.ToString().ToLower() == "r");
 		}
 
 		/// <summary>
