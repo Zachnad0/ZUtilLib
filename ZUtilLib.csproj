@@ -16,9 +16,14 @@ Features:
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>Zachnad0; Utility; AI; Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>1.3.3</Version>
+    <Version>1.3.4</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>1.3.3:
+    <PackageReleaseNotes>1.3.4:
+- ADDED allow decimal number parameter for ZUtils.FilterNumbers.
+- FIXED README AI tutorial info to be actually up to date, and finally made it actually markdown instead of HTML.
+- FIXED ZAI.Training.NeuralNetTrainingOptions so that the fields LearningRate and MutateChance are changeable (because they should be).
+- FIXED ZAI.Training.NeuralNetTrainingOptions so that all of the fields are included for JSON serialization, and there is a JsonConstructor, therefore it is now serializable.
+1.3.3:
 - FIXED the fact that multithreading was LIMITED TO 1???
 - ADDED method for quickly deriving a generation based off an array of pre-existing neural networks.
 1.3.2:
@@ -26,7 +31,7 @@ Features:
 1.3.1:
 - ADDED Neural network training async task, for training some/an initial network(s) or a new network, against  a provided multi-input and output target function.
 - FIXED Random network generation only generating positive initial weights and biases, so amplitude is actually treated as such.
-- FIXED Naming outputs (and inputs) is now __entirely__ optional.
+- FIXED Naming outputs (and inputs) is now entirely optional.
 - FIXED Calculation inputs are no longer limited between 1 and 0.</PackageReleaseNotes>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>

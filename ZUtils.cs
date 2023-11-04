@@ -71,14 +71,15 @@ namespace ZUtilLib
 		/// </summary>
 		/// <param name="str">String to be filtered.</param>
 		/// <param name="removeNotIsolate">If true, return a string <b>without</b> the numbers. If false, return a string <b>with</b> only the numbers.</param>
+		/// <param name="allowDecimal">If true, allows decimal points in the string.</param>
 		/// <returns>A new string of whatever option you chose for <paramref name="removeNotIsolate"/>.</returns>
-		public static string FilterNumbers(this string str, bool removeNotIsolate)
+		public static string FilterNumbers(this string str, bool removeNotIsolate, bool allowDecimal = false)
 		{
-			char[] numbers = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
+			char[] allowedChars = new char[] { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' };
 			if (!removeNotIsolate)
-				return new string(str.Where(x => numbers.Contains(x)).ToArray());
+				return new string(str.Where(x => allowedChars.Contains(x) || (allowDecimal && x == '.')).ToArray());
 			List<char> output = str.ToList();
-			output.RemoveAll(x => numbers.Contains(x));
+			output.RemoveAll(x => allowedChars.Contains(x));
 			return new string(output.ToArray());
 		}
 	}

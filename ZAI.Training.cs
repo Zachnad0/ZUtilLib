@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Text.Json.Serialization;
 
 namespace ZUtilLib.ZAI.Training
 {
@@ -180,11 +181,18 @@ namespace ZUtilLib.ZAI.Training
 	/// <summary>
 	/// This class represents all of the options needed for training neural networks, alongside some optional ones.
 	/// </summary>
+	[JsonSerializable(typeof(NeuralNetTrainingOptions))]
 	public class NeuralNetTrainingOptions
 	{
+		[JsonInclude]
+		public float LearningRate, MutateChance;
+		[JsonInclude]
 		public readonly int GenSize, GenPassCount, Generations, InputHeight, OutputHeight, InternalHeight, InternalCount, TestsPerNet;
-		public readonly float LearningRate, MutateChance, InitialGenAmp, TestRangeMin, TestRangeMax, MinTargAccuracy;
+		[JsonInclude]
+		public readonly float InitialGenAmp, TestRangeMin, TestRangeMax, MinTargAccuracy;
+		[JsonInclude]
 		public readonly bool MutateRelative, IterateByGenerations, RandomInRange;
+		[JsonInclude]
 		public readonly NDNodeActivFunc NodeFuncType;
 		// InitialGenAmp, TestRangeMin/Max AND RandomInRange, and Generations XOR MinTargAccuracy are OPTIONAL
 
@@ -240,6 +248,32 @@ namespace ZUtilLib.ZAI.Training
 			{
 				MinTargAccuracy = minTargAccuracy > 0 && minTargAccuracy != float.PositiveInfinity ? minTargAccuracy : throw new Exception("IterateByGenerations is false but MinTargetAccuracy is unset/invalid");
 			}
+		}
+
+		/// <summary>
+		/// <u><b>DON'T USE THIS unless you're a json deserializer.</b></u>
+		/// </summary>
+		[JsonConstructor]
+		public NeuralNetTrainingOptions(float learningRate, float mutateChance, int genSize, int genPassCount, int generations, int inputHeight, int outputHeight, int internalHeight, int internalCount, int testsPerNet, float initialGenAmp, float testRangeMin, float testRangeMax, float minTargAccuracy, bool mutateRelative, bool iterateByGenerations, bool randomInRange, NDNodeActivFunc nodeFuncType)
+		{
+			LearningRate = learningRate;
+			MutateChance = mutateChance;
+			GenSize = genSize;
+			GenPassCount = genPassCount;
+			Generations = generations;
+			InputHeight = inputHeight;
+			OutputHeight = outputHeight;
+			InternalHeight = internalHeight;
+			InternalCount = internalCount;
+			TestsPerNet = testsPerNet;
+			InitialGenAmp = initialGenAmp;
+			TestRangeMin = testRangeMin;
+			TestRangeMax = testRangeMax;
+			MinTargAccuracy = minTargAccuracy;
+			MutateRelative = mutateRelative;
+			IterateByGenerations = iterateByGenerations;
+			RandomInRange = randomInRange;
+			NodeFuncType = nodeFuncType;
 		}
 	}
 }
