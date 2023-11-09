@@ -2,16 +2,14 @@
 using System.Linq;
 using ZUtilLib.ZAI.Saving;
 
-namespace ZUtilLib.ZAI // Random AI stuff here
+namespace ZUtilLib.ZAI
 {
 	/// <summary>
 	/// Types of neural data node activation functions.
 	/// </summary>
 	public enum NDNodeActivFunc
 	{
-		ReLU,
-		Sigmoid,
-		SoftPlus
+		ReLU, LeakyReLU, Sigmoid, SoftPlus, HyperbolicTangent, ELU, Swish, GELU,
 	}
 
 	public static class GraphStuff
@@ -20,7 +18,7 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 		/// Uses the current graph equation to get y from x.
 		/// </summary>
 		/// <param name="x">X value.</param>
-		/// <returns>Y value.</returns>
+		/// <returns>y value.</returns>
 		public delegate float GraphEquation(float x);
 
 		/// <summary>
@@ -33,13 +31,19 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 			return type switch
 			{
 				NDNodeActivFunc.ReLU => ReLUEquation,
+				NDNodeActivFunc.LeakyReLU => LeakyReLUEquation,
 				NDNodeActivFunc.Sigmoid => SigmoidEquation,
 				NDNodeActivFunc.SoftPlus => SoftPlusEquation,
+				NDNodeActivFunc.HyperbolicTangent => HyperbolicTangentEquation,
+				NDNodeActivFunc.ELU => ELUEquation,
+				NDNodeActivFunc.Swish => SwishEquation,
+				NDNodeActivFunc.GELU => GELUEquation,
 				_ => throw new NotImplementedException(),
 			};
 		}
 
 		public static float ReLUEquation(float x) => MathF.Max(0, x);
+		public static float LeakyReLUEquation(float x) => MathF.Max(0.1f * x, x);
 		public static float SigmoidEquation(float x) => 1 / (1 + MathF.Exp(-x));
 		public static float SoftPlusEquation(float x)
 		{
@@ -51,6 +55,10 @@ namespace ZUtilLib.ZAI // Random AI stuff here
 				_ => y,
 			};
 		}
+		public static float HyperbolicTangentEquation(float x) => MathF.Tanh(x);
+		public static float ELUEquation(float x) => x >= 0 ? x : (MathF.Exp(x) - 1);
+		public static float SwishEquation(float x) => x / (1 + MathF.Exp(-x));
+		public static float GELUEquation(float x) => 0.5f * x * (1 + MathF.Tanh(MathF.Sqrt(2 / MathF.PI) * (x + 0.044715f * MathF.Pow(x, 3))));
 	}
 
 	/// <summary>

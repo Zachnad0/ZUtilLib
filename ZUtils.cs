@@ -82,6 +82,20 @@ namespace ZUtilLib
 			output.RemoveAll(x => allowedChars.Contains(x));
 			return new string(output.ToArray());
 		}
+
+		/// <summary>
+		/// Converts a matrix of 0-255 value bytes into 0-1 value floats.
+		/// </summary>
+		/// <param name="byteMatrix">The matrix to be converted</param>
+		/// <returns>A new matrix of floats.</returns>
+		public static float[,] ToFloatMatrix(this byte[,] byteMatrix)
+		{
+			float[,] output = new float[byteMatrix.GetLength(0), byteMatrix.GetLength(1)];
+			for (int x = 0; x < output.GetLength(0); x++)
+				for (int y = 0; y < output.GetLength(1); y++)
+					output[x, y] = byteMatrix[x, y] / 255f;
+			return output;
+		}
 	}
 
 	public static class GreekAlphabet
