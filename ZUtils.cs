@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace ZUtilLib
 {
@@ -96,6 +97,41 @@ namespace ZUtilLib
 					output[x, y] = byteMatrix[x, y] / 255f;
 			return output;
 		}
+
+		/// <summary>
+		/// Normalizes the matrix so that all values are between 1 and (-1 if <paramref name="negativeFloor"/> is true, otherwise 0).
+		/// </summary>
+		/// <param name="matrix">The matrix to be normalized</param>
+		/// <param name="negativeFloor">If true, will normalize values between 1 and -1, instead of 1 and 0.</param>
+		/// <returns>The normalized matrix.</returns>
+		public static float[,] NormalizeMatrix(this float[,] matrix, bool negativeFloor)
+		{
+			int width = matrix.GetLength(0), height = matrix.GetLength(1);
+			float[,] normMatrix = new float[width, height];
+			float maxVal = float.NegativeInfinity, minVal = float.PositiveInfinity;
+			foreach (float f in matrix)
+			{
+				if (f > maxVal)
+					maxVal = f;
+				else if (f < minVal)
+					minVal = f;
+			}
+
+			// Normalization
+			for (int x = 0; x < width; x++)
+			{
+				for (int y = 0; y < height; y++)
+				{
+					// x = (x - min) / (max - min)
+					normMatrix[x, y] = (matrix[x, y] - minVal) / (maxVal - minVal);
+					if (negativeFloor)
+						normMatrix[x, y] = 2 * normMatrix[x, y] - 1;
+				}
+			}
+
+			return normMatrix;
+		}
+
 	}
 
 	public static class GreekAlphabet

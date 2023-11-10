@@ -20,13 +20,15 @@ namespace ZUtilLib.ZAI
 
 		public ConvNetworkResult ComputeResultMono(float[,] monoPixelGrid)
 		{
+			monoPixelGrid = monoPixelGrid.NormalizeMatrix(false);
+
 			return default;
 		}
 	}
 
 	internal class FilterPoolNodeMono
 	{
-		private float[,] _cachedData = null;
+		public float[,] _cachedData = null;
 
 		public float[,] Kernel { get; private set; }
 		private GraphStuff.GraphEquation _activationFunc;
@@ -67,6 +69,7 @@ namespace ZUtilLib.ZAI
 			// Pool via max of sample size
 			// CONTINUE HERE with pool sampling
 
+			outputData = outputData.NormalizeMatrix(false); // Maybe?
 			return outputData;
 		}
 

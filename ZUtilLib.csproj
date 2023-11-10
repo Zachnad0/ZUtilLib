@@ -20,7 +20,8 @@ Features:
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>1.4.0:
 - ADDED 5 more activation functions.
-- ADDED byte[,]ToFloatMatrix() which converts a matrix of bytes into a matrix of floats.
+- ADDED byte[,].ToFloatMatrix() which converts a matrix of bytes into a matrix of floats.
+- ADDED float[,].NormalizeMatrix(float) that returns a normalized float matrix.
 1.3.4:
 - ADDED allow decimal number parameter for ZUtils.FilterNumbers.
 - FIXED README AI tutorial info to be actually up to date, and finally made it actually markdown instead of HTML.
