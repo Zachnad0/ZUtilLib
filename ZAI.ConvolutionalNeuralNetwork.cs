@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 
 namespace ZUtilLib.ZAI
 {
@@ -28,49 +24,61 @@ namespace ZUtilLib.ZAI
 
 	internal class FilterPoolNodeMono
 	{
-		public float[,] _cachedData = null;
+		public float[][,] _cachedData = null;
 
-		public float[,] Kernel { get; private set; }
+		public (FilterPoolNodeMono Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
+		public float Bias { get; private set; }
 		private GraphStuff.GraphEquation _activationFunc;
 
-		public FilterPoolNodeMono(float[,] kernel, GraphStuff.GraphEquation activationFunc)
+		public FilterPoolNodeMono((FilterPoolNodeMono Node, float[,] Kernel)[] nodeLinkKernels, float bias, GraphStuff.GraphEquation activationFunc)
 		{
-			Kernel = kernel;
+			NodeLinkKernels = nodeLinkKernels;
+			Bias = bias;
 			_activationFunc = activationFunc;
 		}
 
-		public float[,] CalculateData(float[,] pixelData) // Calculate the resulting matrix
+		/// <returns>float[channel][x, y]</returns>
+		public float[][,] CalculateData() // Width = (w - f)/s + 1
 		{
 			if (_cachedData != null) return _cachedData;
 
-			// Scan pixelData and get the sum of the components of the dot between the kernel and current focus
-			int horizSteps = pixelData.GetLength(0) - Kernel.GetLength(0) + 1;
-			int vertSteps = pixelData.GetLength(1) - Kernel.GetLength(1) + 1;
-			float[,] outputData = new float[horizSteps, vertSteps];
-
-			// Convolute via filter
-			for (int vp = pixelData.GetLength(1) - 1; vp >= Kernel.GetLength(1) - 1; vp--) // Down and right
+			float[][,] outChannels = new float[NodeLinkKernels.Length][,];
+			for (int nodeN = 0; nodeN < NodeLinkKernels.Length; nodeN++) // For nodes
 			{
-				for (int hp = 0; hp < horizSteps; hp++)
+				var channels = NodeLinkKernels[nodeN].Node.CalculateData();
+				for (int chanN = 0; chanN < channels.Length; chanN++) // CONTINUE HERE with this insanity
 				{
-					float dotSum = 0;
-					// Calculate sum of dot components
-					for (int x = 0; x < Kernel.GetLength(0); x++) // Right and down
+					float[,] pixelData = channels[chanN];
+
+					// Scan pixelData and get the sum of the components of the dot between the kernel and current focus
+					int horizSteps = pixelData.GetLength(0) - NodeLinkKernels[nodeN].Kernel.GetLength(0) + 1;
+					int vertSteps = pixelData.GetLength(1) - NodeLinkKernels[nodeN].Kernel.GetLength(1) + 1;
+					outChannels[nodeN] = new float[horizSteps, vertSteps];
+
+					// Convolute current channel via kernel
+					for (int vp = pixelData.GetLength(1) - 1; vp >= NodeLinkKernels[nodeN].Kernel.GetLength(1) - 1; vp--) // Down pixelData Y
 					{
-						for (int y = 0; y < Kernel.GetLength(1); y++)
+						for (int hp = 0; hp < horizSteps; hp++) // Right pixelData X
 						{
-							dotSum += Kernel[x, y] * pixelData[hp + x, vp - y];
+							float dotSum = 0;
+							// Calculate sum of dot components
+							for (int x = 0; x < NodeLinkKernels[nodeN].Kernel.GetLength(0); x++) // Right filter X
+							{
+								for (int y = 0; y < NodeLinkKernels[nodeN].Kernel.GetLength(1); y++) // Down filter Y
+								{
+									dotSum += NodeLinkKernels[nodeN].Kernel[x, y] * pixelData[hp + x, vp - y];
+								}
+							}
+							outChannels[nodeN][hp, vp - NodeLinkKernels[nodeN].Kernel.GetLength(1) + 1] = _activationFunc(dotSum + Bias);
 						}
 					}
-					outputData[hp, vp - Kernel.GetLength(1) + 1] = _activationFunc(dotSum);
+
+					// Pool via max of sample size
+					// CONTINUE HERE with pool sampling
+					outChannels[nodeN] = outChannels[nodeN].NormalizeMatrix(false); // Maybe?
 				}
 			}
-
-			// Pool via max of sample size
-			// CONTINUE HERE with pool sampling
-
-			outputData = outputData.NormalizeMatrix(false); // Maybe?
-			return outputData;
+			return outChannels;
 		}
 
 		public FilterPoolNodeMono Clone()

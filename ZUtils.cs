@@ -132,6 +132,32 @@ namespace ZUtilLib
 			return normMatrix;
 		}
 
+		/// <summary>
+		/// Normalizes the matrix so that all values are between 1 and (-1 if <paramref name="negativeFloor"/> is true, otherwise 0).
+		/// </summary>
+		/// <param name="array">The array ot be normalized</param>
+		/// <param name="negativeFloor">If true, will normalize values between 1 and -1, instead of 1 and 0.</param>
+		/// <returns>The normalized array.</returns>
+		public static float[] NormalizeArray(this float[] array, bool negativeFloor)
+		{
+			float maxVal = float.NegativeInfinity, minVal = float.PositiveInfinity;
+			float[] normArray = new float[array.Length];
+			foreach (float f in array)
+			{
+				if (f > maxVal)
+					maxVal = f;
+				else if (f < minVal)
+					minVal = f;
+			}
+			for (int i = 0; i < array.Length; i++)
+			{
+				normArray[i] = (array[i] - minVal) / (maxVal - minVal);
+				if (negativeFloor)
+					normArray[i] = 2 * normArray[i] - 1;
+			}
+
+			return normArray;
+		}
 	}
 
 	public static class GreekAlphabet
