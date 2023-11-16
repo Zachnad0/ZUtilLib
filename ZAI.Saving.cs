@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Text.Json.Serialization;
+using ZUtilLib.ZAI.FFNeuralNetworks;
 
 namespace ZUtilLib.ZAI.Saving
 {
