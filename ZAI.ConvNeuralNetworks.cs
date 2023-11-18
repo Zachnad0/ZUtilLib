@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
@@ -6,18 +7,53 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
 	public class ConvolutionalNeuralNetworkMono
 	{
+		private PolyMatrixInputNodeMono[] InputNodes { get; set; }
 		private FilterPoolNodeMono[][] FilterAndPoolNodes { get; set; }
+		private Equations.GraphEquation[] _filterActivFuncs;
+		private Operations.ConvOp[] _poolingMethods;
+		private int[] _kernelWHs, _poolSampleWHs;
+		private int _inputNodeCount;
+		private bool _initialized = false;
 
-		public ConvolutionalNeuralNetworkMono(int kernelWH, int[] convAndPoolLayerHeights)
+		public ConvolutionalNeuralNetworkMono(int inputChannelCount, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings???
 		{
+			// Settings verification
+			var lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // TODO test to even make sure this works
+			if (!lengths.All(a => a.Length == kernelWHs.Length))
+				throw new Exception("ConvolutionalNeuralNetworkMono critical error: inconsistency with inputted layer setting array lengths.");
+
+			// Setup
+			_kernelWHs = kernelWHs;
+			_inputNodeCount = inputChannelCount;
+			_filterActivFuncs = convActivationFuncs.Select(t => Equations.GetEquationFromType(t)).ToArray();
+			_poolingMethods = poolingOperations.Select(t => Operations.GetOperationFromType(t)).ToArray();
+
+			InputNodes = new PolyMatrixInputNodeMono[inputChannelCount];
 			FilterAndPoolNodes = new FilterPoolNodeMono[convAndPoolLayerHeights.Length][];
 			for (int i = 0; i < convAndPoolLayerHeights.Length; i++)
 				FilterAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
+
+
 		}
 
-		public ConvNetworkResult ComputeResultMono(float[,] monoPixelGrid)
+		public void InitializeThis(float mutateChance, float learningRate)
 		{
-			monoPixelGrid = monoPixelGrid.NormalizeMatrix(false);
+			// CONTINUE HERE with the randomised generation and derived generation below
+			_initialized = true;
+		}
+
+		public void InitializeThis(ConvolutionalNeuralNetworkMono basedOnNet, float mutateChance, float learningRate)
+		{
+		}
+
+		public ConvNetworkResult ComputeResultMono(params float[][,] monoPixelGrids)
+		{
+			// Check input validity
+			if (monoPixelGrids.Length != _inputNodeCount)
+				throw new Exception("ComputeResultMono critical error: invalid number of provided input channels");
+
+			for (int i = 0; i < monoPixelGrids.Length; i++)
+				monoPixelGrids[i] = monoPixelGrids[i].NormalizeMatrix(false);
 
 			return default;
 		}
@@ -30,9 +66,9 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		public (IMonoConvNeuralNode Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
 		public float Bias { get; private set; }
 
-		private GraphStuff.GraphEquation _activationFunc;
+		private Equations.GraphEquation _activationFunc;
 
-		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, GraphStuff.GraphEquation activationFunc)
+		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, Equations.GraphEquation activationFunc)
 		{
 			NodeLinkKernels = nodeLinkKernels;
 			Bias = bias;
@@ -45,7 +81,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			// Calculate all previous node and channel data
 			float[][][,] allChannelsData = NodeLinkKernels.Select(nlk => nlk.Node.CachedData).ToArray(); // float[node][channel][x, y]
-			
+
 			// Get channel count and output channel array size
 			int channelCount = 0;
 			for (int i = 0; i < allChannelsData.Length; i++)
@@ -93,14 +129,21 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			return outChannels;
 		}
+	}
 
-		public FilterPoolNodeMono Clone()
+	internal class PolyMatrixInputNodeMono : IMonoConvNeuralNode
+	{
+		public float[][,] CachedData { get; set; }
+
+		public float[][,] CalculateData()
 		{
-			throw new NotImplementedException();
+			if (CachedData == null)
+				throw new NullReferenceException("PolyMatrixInputNodeMono critical error: null cached data on request!");
+			return CachedData;
 		}
 	}
 
-	internal interface IMonoConvNeuralNode // TODO add input node derived from this
+	internal interface IMonoConvNeuralNode
 	{
 		public float[][,] CachedData { get; set; }
 		/// <returns>float[channel][x, y]</returns>

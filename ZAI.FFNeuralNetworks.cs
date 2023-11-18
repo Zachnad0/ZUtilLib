@@ -52,7 +52,7 @@ namespace ZUtilLib.ZAI.FFNeuralNetworks
 			InputLayer = new InputNode[packedNet.InputHeight];
 			OutputLayer = new OutputNode[packedNet.OutputHeight];
 			InternalLayers = new NeuralDataNode[packedNet.InternalCount, packedNet.InternalHeight];
-			GraphStuff.GraphEquation activationFunc = GraphStuff.GetEquationFromType(NodeFuncType = packedNet.NodeActivationFunc);
+			Equations.GraphEquation activationFunc = Equations.GetEquationFromType(NodeFuncType = packedNet.NodeActivationFunc);
 
 			// Instantiate nodes, assign weights and biases (💀)
 			// Inputs
@@ -106,7 +106,7 @@ namespace ZUtilLib.ZAI.FFNeuralNetworks
 		public void InitializeThis(float randomAmplifier = 1)
 		{
 			Random rand = new Random();
-			GraphStuff.GraphEquation graphEquation = GraphStuff.GetEquationFromType(NodeFuncType);
+			Equations.GraphEquation graphEquation = Equations.GetEquationFromType(NodeFuncType);
 
 			float GetRandVal()
 			{
@@ -344,9 +344,9 @@ namespace ZUtilLib.ZAI.FFNeuralNetworks
 
 		public float? CachedValue { get; set; }
 
-		protected GraphStuff.GraphEquation _activationFunc;
+		protected Equations.GraphEquation _activationFunc;
 
-		public NeuralDataNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc)
+		public NeuralDataNode((INeuralNode, float)[] linkWeights, float nodeBias, Equations.GraphEquation activationFunc)
 		{
 			LinkNodesWeights = linkWeights;
 			NodeBias = nodeBias;
@@ -386,7 +386,7 @@ namespace ZUtilLib.ZAI.FFNeuralNetworks
 	{
 		public string NodeName { get; set; }
 
-		public OutputNode((INeuralNode, float)[] linkWeights, float nodeBias, GraphStuff.GraphEquation activationFunc, string name = "UNNAMED") : base(linkWeights, nodeBias, activationFunc)
+		public OutputNode((INeuralNode, float)[] linkWeights, float nodeBias, Equations.GraphEquation activationFunc, string name = "UNNAMED") : base(linkWeights, nodeBias, activationFunc)
 		{
 			NodeName = name;
 		}

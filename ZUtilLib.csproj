@@ -24,6 +24,7 @@ Features:
 - ADDED float[,].NormalizeMatrix(float) that returns a normalized float matrix.
 - CHANGED namespace arrangement so that classic NNs are under ZAI.FFNeuralNetworks
 - ADDED namespace for convolutional neural networks under ZAI.ConvNeuralNetworks
+- CHANGED static class GraphStuff name to Equations
 1.3.4:
 - ADDED allow decimal number parameter for ZUtils.FilterNumbers.
 - FIXED README AI tutorial info to be actually up to date, and finally made it actually markdown instead of HTML.
