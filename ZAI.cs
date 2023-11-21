@@ -68,8 +68,18 @@ namespace ZUtilLib.ZAI
 	}
 	public static class Operations
 	{
+		/// <summary>
+		/// Uses the provided sample matrix to give a float value.
+		/// </summary>
+		/// <param name="matrix">The sample to be processed.</param>
+		/// <returns>Resulting value.</returns>
 		public delegate float ConvOp(float[,] matrix);
 
+		/// <summary>
+		/// This is used to obtain the pooling operation based on the type.
+		/// </summary>
+		/// <param name="operationType">Convolutional pooling node operation type.</param>
+		/// <returns>The delegate of the corresponding method.</returns>
 		public static ConvOp GetOperationFromType(ConvPoolingOp operationType)
 		{
 			return operationType switch

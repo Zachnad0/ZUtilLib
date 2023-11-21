@@ -8,37 +8,66 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 	public class ConvolutionalNeuralNetworkMono
 	{
 		private PolyMatrixInputNodeMono[] InputNodes { get; set; }
+		/// <summary>[Layer][Node]</summary>
 		private FilterPoolNodeMono[][] FilterAndPoolNodes { get; set; }
+
 		private Equations.GraphEquation[] _filterActivFuncs;
 		private Operations.ConvOp[] _poolingMethods;
 		private int[] _kernelWHs, _poolSampleWHs;
 		private int _inputNodeCount;
 		private bool _initialized = false;
 
-		public ConvolutionalNeuralNetworkMono(int inputChannelCount, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings???
+		public ConvolutionalNeuralNetworkMono(int inputChannelCount, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
 			var lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // TODO test to even make sure this works
 			if (!lengths.All(a => a.Length == kernelWHs.Length))
 				throw new Exception("ConvolutionalNeuralNetworkMono critical error: inconsistency with inputted layer setting array lengths.");
 
-			// Setup
+			// Fields
 			_kernelWHs = kernelWHs;
+			_poolSampleWHs = poolSampleWHs;
 			_inputNodeCount = inputChannelCount;
 			_filterActivFuncs = convActivationFuncs.Select(t => Equations.GetEquationFromType(t)).ToArray();
 			_poolingMethods = poolingOperations.Select(t => Operations.GetOperationFromType(t)).ToArray();
 
+			// Array init
 			InputNodes = new PolyMatrixInputNodeMono[inputChannelCount];
 			FilterAndPoolNodes = new FilterPoolNodeMono[convAndPoolLayerHeights.Length][];
 			for (int i = 0; i < convAndPoolLayerHeights.Length; i++)
 				FilterAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
-
-
 		}
 
-		public void InitializeThis(float mutateChance, float learningRate)
+		public void InitializeThis(float initialWeightAmp = 1)
 		{
-			// CONTINUE HERE with the randomised generation and derived generation below
+			// TODO test InitializeThis(float) method
+			Random random = new Random();
+			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
+			// Generate input nodes
+			for (int n = 0; n < _inputNodeCount; n++)
+				InputNodes[n] = new PolyMatrixInputNodeMono();
+
+			// Generate convolutional & pooling nodes
+			for (int layer = 0; layer < FilterAndPoolNodes.Length; layer++)
+			{
+				for (int n = 0; n < FilterAndPoolNodes[layer].Length; n++)
+				{
+					// Setup links, randomise associated kernels, and normalize them
+					(IMonoConvNeuralNode, float[,])[] nodeLinkKernels;
+					if (layer == 0)
+					{
+						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[InputNodes.Length];
+						// CONTINUE HERE with making it generate the values and etcetera
+					}
+					else
+					{
+						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[FilterAndPoolNodes[layer - 1].Length];
+					}
+
+					FilterAndPoolNodes[layer][n] = new FilterPoolNodeMono(nodeLinkKernels, GetRandVal(), _poolSampleWHs[layer], _filterActivFuncs[layer], _poolingMethods[layer]);
+				}
+			}
+
 			_initialized = true;
 		}
 
@@ -54,7 +83,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			for (int i = 0; i < monoPixelGrids.Length; i++)
 				monoPixelGrids[i] = monoPixelGrids[i].NormalizeMatrix(false);
-
+			// TODO Complete computation result method.
 			return default;
 		}
 	}
@@ -67,12 +96,16 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		public float Bias { get; private set; }
 
 		private Equations.GraphEquation _activationFunc;
+		private Operations.ConvOp _poolOperation;
+		private int _poolSampleWH;
 
-		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, Equations.GraphEquation activationFunc)
+		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, int poolSampleWH, Equations.GraphEquation activationFunc, Operations.ConvOp poolOperation)
 		{
 			NodeLinkKernels = nodeLinkKernels;
 			Bias = bias;
 			_activationFunc = activationFunc;
+			_poolOperation = poolOperation;
+			_poolSampleWH = poolSampleWH;
 		}
 
 		public float[][,] CalculateData()
@@ -99,7 +132,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 					int kernelW = NodeLinkKernels[nodeN].Kernel.GetLength(0), kernelH = NodeLinkKernels[nodeN].Kernel.GetLength(1);
 					int horizSteps = pixelData.GetLength(0) - kernelW + 1;
 					int vertSteps = pixelData.GetLength(1) - kernelH + 1;
-					outChannels[outputIndex] = new float[horizSteps, vertSteps]; // Width = (w - f)/s + 1
+					float[,] filteredData = new float[horizSteps, vertSteps]; // Width = (w - f)/s + 1
 
 					// Convolute current channel via kernel
 					for (int vp = pixelData.GetLength(1) - 1; vp >= kernelH - 1; vp--) // Down pixelData Y
@@ -115,20 +148,38 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 									dotSum += NodeLinkKernels[nodeN].Kernel[x, y] * pixelData[hp + x, vp - y];
 								}
 							}
-							outChannels[outputIndex][hp, vp - kernelH + 1] = _activationFunc(dotSum + Bias);
+							filteredData[hp, vp - kernelH + 1] = _activationFunc(dotSum + Bias);
 						}
 					}
 
-					// Pool via max of sample size
-					// CONTINUE HERE with pool sampling
-					outChannels[outputIndex] = outChannels[outputIndex].NormalizeMatrix(false); // Maybe?
+					// Pool via method the current filteredData matrix
+					int pDataLenX = horizSteps / _poolSampleWH, pDataLenY = vertSteps / _poolSampleWH;
+					float[,] pooledData = new float[pDataLenX, pDataLenY];
+					for (int fDV = _poolSampleWH - 1, pDV = 0; fDV < vertSteps; fDV += _poolSampleWH, pDV++) // Up filteredData Y
+					{
+						for (int fDH = 0, pDH = 0; fDH < horizSteps; fDH += _poolSampleWH, pDH++) // Right filteredData X
+						{
+							float[,] sample = new float[_poolSampleWH, _poolSampleWH];
+							for (int y = 0; y < _poolSampleWH; y++) // Up local area Y
+							{
+								for (int x = 0; x < _poolSampleWH; x++) // Right local area X
+								{
+									sample[x, y] = filteredData[fDH + x, fDV + y];
+								}
+							}
+							pooledData[pDH, pDV] = _poolOperation(sample);
+						}
+					}
+
+					// Set current output channel
+					outChannels[outputIndex] = pooledData;
 
 					outputIndex++;
 				}
 			}
 
 			return outChannels;
-		}
+		} // TODO Test CalculateData()
 	}
 
 	internal class PolyMatrixInputNodeMono : IMonoConvNeuralNode

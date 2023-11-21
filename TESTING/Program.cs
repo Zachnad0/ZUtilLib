@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ZUtilLib;
 using ZUtilLib.ZAI;
+using ZUtilLib.ZAI.ConvNeuralNetworks;
 using ZUtilLib.ZAI.Saving;
 using ZUtilLib.ZAI.Training;
 
@@ -75,6 +76,7 @@ namespace LIBRARYTESTING
 		public static void Main(string[] args)
 		{
 			// Conv net testing
+			ConvolutionalNeuralNetworkMono testConvNetAlpha;
 		}
 	}
 }
