@@ -5,10 +5,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
-using System.Runtime.CompilerServices;
 
 namespace ZUtilLib
 {
+	/// <summary>
+	/// This static class is full of static utility methods, with most of them being extension.
+	/// </summary>
 	public static class ZUtils
 	{
 		/// <summary>
@@ -135,7 +137,7 @@ namespace ZUtilLib
 		/// <summary>
 		/// Normalizes the matrix so that all values are between 1 and (-1 if <paramref name="negativeFloor"/> is true, otherwise 0).
 		/// </summary>
-		/// <param name="array">The array ot be normalized</param>
+		/// <param name="array">The array to be normalized</param>
 		/// <param name="negativeFloor">If true, will normalize values between 1 and -1, instead of 1 and 0.</param>
 		/// <returns>The normalized array.</returns>
 		public static float[] NormalizeArray(this float[] array, bool negativeFloor)
@@ -158,12 +160,70 @@ namespace ZUtilLib
 
 			return normArray;
 		}
-	}
 
-	public static class GreekAlphabet
-	{
-		public const char alpha = 'α', Alpha = 'Α', beta = 'β', Beta = 'Β', gamma = 'γ', Gamma = 'Γ', delta = 'δ', Delta = 'Δ', epsilon = 'ε', Epsilon = 'Ε', zeta = 'ζ', Zeta = 'Ζ', eta = 'η', Eta = 'Η', theta = 'θ', Theta = 'Θ', iota = 'ι', Iota = 'Ι', kappa = 'κ', Kappa = 'Κ', lambda = 'λ', Lambda = 'Λ', mu = 'μ', Mu = 'Μ', nu = 'ν', Nu = 'Ν', xi = 'ξ', Xi = 'Ξ', omicron = 'ο', Omicron = 'Ο', pi = 'π', Pi = 'Π', rho = 'ρ', Rho = 'Ρ', sigma = 'σ', Sigma = 'Σ', tau = 'τ', Tau = 'Τ', upsilon = 'υ', Upsilon = 'Υ', phi = 'φ', Phi = 'Φ', chi = 'χ', Chi = 'Χ', psi = 'ψ', Psi = 'Ψ', omega = 'ω', Omega = 'Ω';
-		public static readonly char[] LowerCaseLetters = { alpha, beta, gamma, delta, epsilon, zeta, eta, theta, iota, kappa, lambda, mu, nu, xi, omicron, pi, rho, sigma, tau, upsilon, phi, chi, psi, omega };
-		public static readonly char[] UpperCaseLetters = { Alpha, Beta, Gamma, Delta, Epsilon, Zeta, Eta, Theta, Iota, Kappa, Lambda, Mu, Nu, Xi, Omicron, Pi, Rho, Sigma, Tau, Upsilon, Phi, Chi, Psi, Omega };
+		/// <summary>
+		/// Generates a matrix of size <paramref name="height"/> and <paramref name="width"/>, consisting of random values between 0 and 1.
+		/// </summary>
+		/// <param name="random">Current System.Random instance.</param>
+		/// <param name="height">Width of the matrix.</param>
+		/// <param name="width">Height of the matrix.</param>
+		/// <returns>An unnormalized matrix of size <paramref name="width"/> by <paramref name="height"/>.</returns>
+		public static float[,] NextMatrix(this Random random, int width, int height)
+		{
+			float[,] newMatrix = new float[width, height];
+			for (int x = 0; x < width; x++)
+				for (int y = 0; y < height; y++)
+					newMatrix[x, y] = (float)random.NextDouble();
+			return newMatrix;
+		}
+
+		/// <summary>
+		/// Generates an array of size <paramref name="length"/>, consisting of random values between 0 and 1.
+		/// </summary>
+		/// <param name="random">Current System.Random instance.</param>
+		/// <param name="length">Length of the array.</param>
+		/// <returns>An unnormalized array of size <paramref name="random"/>.</returns>
+		public static float[] NextArray(this Random random, int length)
+		{
+			float[] newArray = new float[length];
+			for (int i = 0; i < length; i++)
+				newArray[i] = (float)random.NextDouble();
+			return newArray;
+		}
+
+		/// <summary>
+		/// Iterates through the matrix and runs <paramref name="action"/> for each value, passing in the current x, y, and <typeparamref name="T"/>.
+		/// </summary>
+		/// <param name="matrix">The matrix.</param>
+		/// <param name="action">The method that takes in x, y and the current <typeparamref name="T"/>.</param>
+		public static T[,] Foreach<T>(this T[,] matrix, Action<int, int, T> action)
+		{
+			int w = matrix.GetLength(0), h = matrix.GetLength(1);
+			for (int x = 0; x < w; x++)
+				for (int y = 0; y < h; y++)
+					action(x, y, matrix[x, y]);
+			return matrix;
+		}
+
+		/// <summary>
+		/// Iterates through the matrix and runs <paramref name="func"/> for each value, passing in the current x, y, and <typeparamref name="T"/>, then setting the value of the matrix at that location to be the result.
+		/// </summary>
+		/// <param name="matrix">The matrix.</param>
+		/// <param name="func">The method that takes in x, y and the current <typeparamref name="T"/>, and returns the new current value.</param>
+		public static T[,] SetEach<T>(this T[,] matrix, Func<int, int, T, T> func)
+		{
+			int w = matrix.GetLength(0), h = matrix.GetLength(1);
+			for (int x = 0; x < w; x++)
+				for (int y = 0; y < h; y++)
+					matrix[x, y] = func(x, y, matrix[x, y]);
+			return matrix;
+		}
+
+		public static class GreekAlphabet
+		{
+			public const char alpha = 'α', Alpha = 'Α', beta = 'β', Beta = 'Β', gamma = 'γ', Gamma = 'Γ', delta = 'δ', Delta = 'Δ', epsilon = 'ε', Epsilon = 'Ε', zeta = 'ζ', Zeta = 'Ζ', eta = 'η', Eta = 'Η', theta = 'θ', Theta = 'Θ', iota = 'ι', Iota = 'Ι', kappa = 'κ', Kappa = 'Κ', lambda = 'λ', Lambda = 'Λ', mu = 'μ', Mu = 'Μ', nu = 'ν', Nu = 'Ν', xi = 'ξ', Xi = 'Ξ', omicron = 'ο', Omicron = 'Ο', pi = 'π', Pi = 'Π', rho = 'ρ', Rho = 'Ρ', sigma = 'σ', Sigma = 'Σ', tau = 'τ', Tau = 'Τ', upsilon = 'υ', Upsilon = 'Υ', phi = 'φ', Phi = 'Φ', chi = 'χ', Chi = 'Χ', psi = 'ψ', Psi = 'Ψ', omega = 'ω', Omega = 'Ω';
+			public static readonly char[] LowerCaseLetters = { alpha, beta, gamma, delta, epsilon, zeta, eta, theta, iota, kappa, lambda, mu, nu, xi, omicron, pi, rho, sigma, tau, upsilon, phi, chi, psi, omega };
+			public static readonly char[] UpperCaseLetters = { Alpha, Beta, Gamma, Delta, Epsilon, Zeta, Eta, Theta, Iota, Kappa, Lambda, Mu, Nu, Xi, Omicron, Pi, Rho, Sigma, Tau, Upsilon, Phi, Chi, Psi, Omega };
+		}
 	}
 }

@@ -38,11 +38,11 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				FilterAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
 		}
 
-		public void InitializeThis(float initialWeightAmp = 1)
+		public void InitializeThis(float initialWeightAmp = 1) // TODO test InitializeThis(float) method
 		{
-			// TODO test InitializeThis(float) method
 			Random random = new Random();
 			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
+
 			// Generate input nodes
 			for (int n = 0; n < _inputNodeCount; n++)
 				InputNodes[n] = new PolyMatrixInputNodeMono();
@@ -57,16 +57,25 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 					if (layer == 0)
 					{
 						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[InputNodes.Length];
-						// CONTINUE HERE with making it generate the values and etcetera
+						for (int inpNode = 0; inpNode < nodeLinkKernels.Length; inpNode++)
+						{
+							nodeLinkKernels[inpNode] = (InputNodes[inpNode], (ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer]) * (initialWeightAmp * 2) - initialWeightAmp);
+						}
 					}
 					else
 					{
 						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[FilterAndPoolNodes[layer - 1].Length];
+						for (int prevLNode = 0; prevLNode < nodeLinkKernels.Length; prevLNode++)
+						{
+							nodeLinkKernels[prevLNode] = (FilterAndPoolNodes[layer - 1][prevLNode], (ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer]) * (initialWeightAmp * 2) - initialWeightAmp);
+						}
 					}
 
 					FilterAndPoolNodes[layer][n] = new FilterPoolNodeMono(nodeLinkKernels, GetRandVal(), _poolSampleWHs[layer], _filterActivFuncs[layer], _poolingMethods[layer]);
 				}
 			}
+
+			// TODO add normal neural network afterwards to make sense of outputs and etcetera.
 
 			_initialized = true;
 		}

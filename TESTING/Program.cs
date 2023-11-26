@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Threading.Tasks;
 using ZUtilLib;
 using ZUtilLib.ZAI;
@@ -73,10 +74,41 @@ namespace LIBRARYTESTING
 			return new float[] { (0.002f * MathF.Pow(x, 4)) - (0.2f * MathF.Pow(x, 2)) + (0.4f * x) + 3 };
 		}
 
-		public static void Main(string[] args)
+		public static void EEEMain(string[] args)
 		{
 			// Conv net testing
-			ConvolutionalNeuralNetworkMono testConvNetAlpha;
+			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, new[] { 3, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.ReLU }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+
+			testConvNetAlpha.InitializeThis();
+
+			float[,] inputMatrix = new float[100, 100];
+			for (int x = 0; x < inputMatrix.GetLength(0); x++)
+			{
+				for (int y = 0; y < inputMatrix.GetLength(1); y++)
+				{
+					inputMatrix[x, y] = (float)Random.Shared.NextDouble();
+				}
+			}
+
+			testConvNetAlpha.ComputeResultMono(inputMatrix);
+		}
+
+		public static void Main(string[] args)
+		{
+			int initialWeightAmp = 5;
+			Random random = new Random();
+			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
+			float[,] f = new float[3, 3];
+			try
+			{
+				f.SetEach((x, y, v) => GetRandVal());
+				Console.WriteLine(f);
+			}
+			catch
+			{
+				Console.WriteLine("bbbbbbbbbbrrrrrrrruuuuuuuhhh");
+			}
+			Console.ReadKey();
 		}
 	}
 }
