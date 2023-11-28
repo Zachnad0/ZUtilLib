@@ -74,41 +74,40 @@ namespace LIBRARYTESTING
 			return new float[] { (0.002f * MathF.Pow(x, 4)) - (0.2f * MathF.Pow(x, 2)) + (0.4f * x) + 3 };
 		}
 
-		public static void EEEMain(string[] args)
+		public static void Main(string[] args)
 		{
 			// Conv net testing
 			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, new[] { 3, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.ReLU }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
 
 			testConvNetAlpha.InitializeThis();
 
-			float[,] inputMatrix = new float[100, 100];
-			for (int x = 0; x < inputMatrix.GetLength(0); x++)
-			{
-				for (int y = 0; y < inputMatrix.GetLength(1); y++)
-				{
-					inputMatrix[x, y] = (float)Random.Shared.NextDouble();
-				}
-			}
+			float[,] inputMatrix = Random.Shared.NextMatrix(100, 100, true);
 
 			testConvNetAlpha.ComputeResultMono(inputMatrix);
 		}
 
-		public static void Main(string[] args)
-		{
-			int initialWeightAmp = 5;
-			Random random = new Random();
-			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
-			float[,] f = new float[3, 3];
-			try
-			{
-				f.SetEach((x, y, v) => GetRandVal());
-				Console.WriteLine(f);
-			}
-			catch
-			{
-				Console.WriteLine("bbbbbbbbbbrrrrrrrruuuuuuuhhh");
-			}
-			Console.ReadKey();
-		}
+		//public static void Main(string[] args)
+		//{
+		//	const int initialWeightAmp = 5, testCount = 3;
+		//	Random random = new Random();
+		//	double t1Avg = 0, t2Avg = 0;
+		//	for (int i = 0; i < testCount; i++)
+		//	{
+		//		DateTime t1Start = DateTime.Now;
+		//		float GetRandVal(int x, int y, float v) => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
+		//		float[,] test1 = new float[4000, 4000];
+		//		test1.SetEach(GetRandVal);
+		//		DateTime t1End = DateTime.Now, t2Start = DateTime.Now;
+		//		float[,] test2 = (ZMatrix)random.NextMatrix(4000, 4000) * (initialWeightAmp * 2) - initialWeightAmp;
+		//		DateTime t2End = DateTime.Now;
+
+		//		t1Avg += Math.Pow((t1End - t1Start).TotalSeconds, 2);
+		//		t2Avg += Math.Pow((t2End - t2Start).TotalSeconds, 2);
+		//		//Console.WriteLine($"{test1.Length:n}\t{test2.Length:n}");
+		//		//Console.WriteLine($"Test 1:\t{(t1End - t1Start).TotalSeconds:f}s\nTest 2:\t{(t2End - t2Start).TotalSeconds:f}s");
+		//	}
+		//	Console.WriteLine($"---------------------\nTest 1:\t{t1Avg / testCount:f4}s\nTest 2:\t{t2Avg / testCount:f4}s");
+		//	Console.ReadKey();
+		//}
 	}
 }

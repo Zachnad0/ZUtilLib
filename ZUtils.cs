@@ -162,32 +162,45 @@ namespace ZUtilLib
 		}
 
 		/// <summary>
-		/// Generates a matrix of size <paramref name="height"/> and <paramref name="width"/>, consisting of random values between 0 and 1.
+		/// Generates a matrix of size <paramref name="height"/> and <paramref name="width"/>, consisting of random values between (0, or -1 if <paramref name="negativeFloor"/> is true) and 1.
 		/// </summary>
 		/// <param name="random">Current System.Random instance.</param>
 		/// <param name="height">Width of the matrix.</param>
 		/// <param name="width">Height of the matrix.</param>
+		/// <param name="negativeFloor">If true, will make the minimum value -1 instead of 0.</param>
 		/// <returns>An unnormalized matrix of size <paramref name="width"/> by <paramref name="height"/>.</returns>
-		public static float[,] NextMatrix(this Random random, int width, int height)
+		public static float[,] NextMatrix(this Random random, int width, int height, bool negativeFloor = false)
 		{
 			float[,] newMatrix = new float[width, height];
 			for (int x = 0; x < width; x++)
+			{
 				for (int y = 0; y < height; y++)
+				{
 					newMatrix[x, y] = (float)random.NextDouble();
+					if (negativeFloor)
+
+						newMatrix[x, y] = newMatrix[x, y] * 2 - 1;
+				}
+			}
 			return newMatrix;
 		}
 
 		/// <summary>
-		/// Generates an array of size <paramref name="length"/>, consisting of random values between 0 and 1.
+		/// Generates an array of size <paramref name="length"/>, consisting of random values between (0, or -1 if <paramref name="negativeFloor"/> is true) and 1.
 		/// </summary>
 		/// <param name="random">Current System.Random instance.</param>
 		/// <param name="length">Length of the array.</param>
-		/// <returns>An unnormalized array of size <paramref name="random"/>.</returns>
-		public static float[] NextArray(this Random random, int length)
+		/// <param name="negativeFloor">If true, will make the minimum value -1 instead of 0.</param>
+		/// <returns>An unnormalized array of size <paramref name="length"/>.</returns>
+		public static float[] NextArray(this Random random, int length, bool negativeFloor = false)
 		{
 			float[] newArray = new float[length];
 			for (int i = 0; i < length; i++)
+			{
 				newArray[i] = (float)random.NextDouble();
+				if (negativeFloor)
+					newArray[i] = newArray[i] * 2 - 1;
+			}
 			return newArray;
 		}
 

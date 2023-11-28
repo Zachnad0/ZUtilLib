@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using ZUtilLib.ZAI.FFNeuralNetworks;
 
 namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
@@ -10,17 +11,18 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		private PolyMatrixInputNodeMono[] InputNodes { get; set; }
 		/// <summary>[Layer][Node]</summary>
 		private FilterPoolNodeMono[][] FilterAndPoolNodes { get; set; }
+		private NeuralNetwork FinalStageNeuralNet { get; set; }
 
 		private Equations.GraphEquation[] _filterActivFuncs;
 		private Operations.ConvOp[] _poolingMethods;
-		private int[] _kernelWHs, _poolSampleWHs;
+		private int[] _kernelWHs, _poolSampleWHs, _inputChannelWidths, _inputChannelHeights; // TODO implement these _inputChannelWidth/Heights fields
 		private int _inputNodeCount;
 		private bool _initialized = false;
 
 		public ConvolutionalNeuralNetworkMono(int inputChannelCount, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
-			var lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // TODO test to even make sure this works
+			IEnumerable<Array> lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // It works...
 			if (!lengths.All(a => a.Length == kernelWHs.Length))
 				throw new Exception("ConvolutionalNeuralNetworkMono critical error: inconsistency with inputted layer setting array lengths.");
 
@@ -38,7 +40,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				FilterAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
 		}
 
-		public void InitializeThis(float initialWeightAmp = 1) // TODO test InitializeThis(float) method
+		public void InitializeThis(float initialWeightAmp = 1)
 		{
 			Random random = new Random();
 			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
@@ -59,15 +61,21 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[InputNodes.Length];
 						for (int inpNode = 0; inpNode < nodeLinkKernels.Length; inpNode++)
 						{
-							nodeLinkKernels[inpNode] = (InputNodes[inpNode], (ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer]) * (initialWeightAmp * 2) - initialWeightAmp);
+							nodeLinkKernels[inpNode] = (
+								InputNodes[inpNode],
+								((float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)).NormalizeMatrix(true)
+								);
 						}
 					}
 					else
 					{
 						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[FilterAndPoolNodes[layer - 1].Length];
-						for (int prevLNode = 0; prevLNode < nodeLinkKernels.Length; prevLNode++)
+						for (int prevLyrNode = 0; prevLyrNode < nodeLinkKernels.Length; prevLyrNode++)
 						{
-							nodeLinkKernels[prevLNode] = (FilterAndPoolNodes[layer - 1][prevLNode], (ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer]) * (initialWeightAmp * 2) - initialWeightAmp);
+							nodeLinkKernels[prevLyrNode] = (
+								FilterAndPoolNodes[layer - 1][prevLyrNode],
+								((float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)).NormalizeMatrix(true)
+								);
 						}
 					}
 
@@ -82,10 +90,21 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 		public void InitializeThis(ConvolutionalNeuralNetworkMono basedOnNet, float mutateChance, float learningRate)
 		{
+			// TODO InitializeThis method that is based on the provided network
+
+			// Verify other network specifications, but don't bother too much
+			if (basedOnNet == null || !basedOnNet._initialized || basedOnNet.InputNodes.Length != InputNodes.Length || basedOnNet._kernelWHs.Length != _kernelWHs.Length || basedOnNet.FilterAndPoolNodes.Length != FilterAndPoolNodes.Length)
+				throw new Exception("InitializeThis critical error: basedOnNet differs from the current network's specs in some way.");
+
+			// CONINUE HERE with the InitializeThis method by adding the carrying over plus potential mutation (research how it should be done for kernels)
+
+				_initialized = true;
 		}
 
 		public ConvNetworkResult ComputeResultMono(params float[][,] monoPixelGrids)
 		{
+			if (!_initialized)
+				throw new Exception("ComputeResultMono critical error: CNN not initialized.");
 			// Check input validity
 			if (monoPixelGrids.Length != _inputNodeCount)
 				throw new Exception("ComputeResultMono critical error: invalid number of provided input channels");
@@ -117,7 +136,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_poolSampleWH = poolSampleWH;
 		}
 
-		public float[][,] CalculateData()
+		public float[][,] CalculateData() // TODO Test CalculateData()
 		{
 			if (_cData != null) return _cData;
 
@@ -188,7 +207,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			}
 
 			return outChannels;
-		} // TODO Test CalculateData()
+		}
 	}
 
 	internal class PolyMatrixInputNodeMono : IMonoConvNeuralNode

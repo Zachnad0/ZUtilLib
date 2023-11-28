@@ -1,7 +1,7 @@
 ﻿namespace ZUtilLib
 {
 	/// <summary>
-	/// While not intended to be used directly, this class allows for easily using operators to do matrix things.
+	/// While not intended to be used directly, this class allows for easily using operators to do matrix things. Casting to this class allows for adding and multiplying matrices and stuff, so it can be useful. <u>Check the source code for proper information.</u>
 	/// </summary>
 	public class ZMatrix
 	{

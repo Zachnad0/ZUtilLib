@@ -26,8 +26,8 @@ Features:
 - CHANGED namespace arrangement so that classic NNs are under ZAI.FFNeuralNetworks
 - ADDED namespace for convolutional neural networks under ZAI.ConvNeuralNetworks
 - CHANGED static class GraphStuff name to Equations
-- ADDED System.Random.NextMatrix(int, int) that returns a random float matrix of given size.
-- ADDED System.Random.NextArray(int) that returns a random float array of given size.
+- ADDED System.Random.NextMatrix(int, int, ?bool) that returns a random float matrix of given size.
+- ADDED System.Random.NextArray(int, ?bool) that returns a random float array of given size.
 - ADDED ZMatrix thing which has some implicit conversion and operators and stuff for dealing with float matrices.
 - ADDED T[,].Foreach&lt;T&gt;(Action&lt;int, int, T&gt;) that runs an action for each value, utilizing x, y, and the value at that point of the matrix.
 - ADDED T[,].SetEach&lt;T&gt;(Func&lt;int, int, T, T&gt;) that runs a func overwriting each value, utilizing x, y, and current value in the matrix.
