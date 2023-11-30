@@ -74,16 +74,40 @@ namespace LIBRARYTESTING
 			return new float[] { (0.002f * MathF.Pow(x, 4)) - (0.2f * MathF.Pow(x, 2)) + (0.4f * x) + 3 };
 		}
 
-		public static void Main(string[] args)
+		public static void EEEMain(string[] args)
 		{
 			// Conv net testing
-			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, new[] { 3, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.ReLU }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, new[] { 3, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.ReLU }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max }, new[] { (100, 100) });
 
 			testConvNetAlpha.InitializeThis();
 
 			float[,] inputMatrix = Random.Shared.NextMatrix(100, 100, true);
 
 			testConvNetAlpha.ComputeResultMono(inputMatrix);
+		}
+
+		public static void Main(string[] args)
+		{
+			(int W, int H)[] layerDimensions = new (int W, int H)[] { (100, 100) };
+			for (int cpLayer = 0; cpLayer < 2; cpLayer++)
+			{
+				for (int nodeInLayer = 1; nodeInLayer < (cpLayer == 0 ? 2 : 4); nodeInLayer++)
+				{
+					layerDimensions = layerDimensions.Concat(layerDimensions.Clone() as (int, int)[]).ToArray();
+				}
+				for (int inLayer = 0; inLayer < layerDimensions.Length; inLayer++)
+				{
+					// Conv reduction
+					layerDimensions[inLayer].W -= 3 - 1;
+					layerDimensions[inLayer].H -= 3 - 1;
+					// Pool reduction
+					layerDimensions[inLayer].W /= 2;
+					layerDimensions[inLayer].H /= 2;
+				}
+			}
+			int sumOfRemainingPixels = layerDimensions.Sum(d => d.W * d.H);
+
+			Console.WriteLine(sumOfRemainingPixels);
 		}
 
 		//public static void Main(string[] args)
