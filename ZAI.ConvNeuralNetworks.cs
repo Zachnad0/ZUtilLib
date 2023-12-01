@@ -161,65 +161,59 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			if (_cData != null) return _cData;
 
 			// Calculate all previous node and channel data
-			float[][,] allChannelsData = NodeLinkKernels.Select(nlk => nlk.Node.CalculateData()).ToArray(); // float[node][channel][x, y]
+			float[][,] allChannelsData = NodeLinkKernels.Select(nlk => nlk.Node.CalculateData()).ToArray(); // float[channel][x, y]
 
-			int outW = allChannelsData[0].GetLength(0), outH = allChannelsData.GetLength(1);
-			if (!allChannelsData.All(m => m.GetLength(0) == outW && m.GetLength(1) == outH))
+			int kernelWH = NodeLinkKernels[0].Kernel.GetLength(0); // Can't possibly go wrong, right?
+			int chnW = allChannelsData[0].GetLength(0), chnH = allChannelsData.GetLength(1);
+			if (!allChannelsData.All(m => m.GetLength(0) == chnW && m.GetLength(1) == chnH))
 				throw new Exception("CalculateData critical error: two input nodes/channels have differing dimensions??? (This shouldn't happen, ever.)");
-			float[,] outChannel = new float[outW, outH];
+			float[,] convolutedChannel = new float[chnW - kernelWH + 1, chnH - kernelWH + 1];
 
-			for (int chanN = 0; chanN < allChannelsData.Length; chanN++) // For channels/nodes
+			// Convolute
+			for (int convVert = chnH - kernelWH; convVert >= 0; convVert--) // Top, down (conv grid)
 			{
-				float[,] pixelData = allChannelsData[chanN];
-
-				// Scan pixelData and get the sum of the components of the dot between the kernel and current focus
-				int kernelW = NodeLinkKernels[chanN].Kernel.GetLength(0), kernelH = NodeLinkKernels[chanN].Kernel.GetLength(1);
-				int horizSteps = pixelData.GetLength(0) - kernelW + 1;
-				int vertSteps = pixelData.GetLength(1) - kernelH + 1;
-				float[,] filteredData = new float[horizSteps, vertSteps]; // Width = (w - f)/s + 1
-
-				// Convolute current channel via kernel
-				for (int vp = pixelData.GetLength(1) - 1; vp >= kernelH - 1; vp--) // Down pixelData Y
+				for (int convHoriz = 0; convHoriz < chnW - kernelWH + 1; convHoriz++) // Left, rightwards (conv grid)
 				{
-					for (int hp = 0; hp < horizSteps; hp++) // Right pixelData X
+					// Translate to input channel's coordinates
+					int inpX = convHoriz, inpY = convVert + kernelWH - 1;
+					// Get the sum of the dot-sums from each channel
+					float[] dotSums = new float[allChannelsData.Length];
+					for (int chanN = 0; chanN < allChannelsData.Length; chanN++)
 					{
-						float dotSum = 0;
-						// Calculate sum of dot components
-						for (int x = 0; x < kernelW; x++) // Right filter X
+						dotSums[chanN] = 0;
+						for (int x = 0; x < kernelWH; x++) // Left, rightwards (local offset)
 						{
-							for (int y = 0; y < kernelH; y++) // Down filter Y
+							for (int y = kernelWH - 1; y >= 0; y--) // Top, down (local offset)
 							{
-								dotSum += NodeLinkKernels[chanN].Kernel[x, y] * pixelData[hp + x, vp - y];
+								dotSums[chanN] += allChannelsData[chanN][inpX + x, inpY - kernelWH + 1 + y] * NodeLinkKernels[chanN].Kernel[x, y];
 							}
 						}
-						filteredData[hp, vp - kernelH + 1] = _activationFunc(dotSum + Bias);
 					}
+					convolutedChannel[convHoriz, convVert] = _activationFunc(dotSums.Sum() + Bias);
 				}
-
-				// Pool via method the current filteredData matrix
-				int pDataLenX = horizSteps / _poolSampleWH, pDataLenY = vertSteps / _poolSampleWH;
-				float[,] pooledData = new float[pDataLenX, pDataLenY];
-				for (int fDV = _poolSampleWH - 1, pDV = 0; fDV < vertSteps; fDV += _poolSampleWH, pDV++) // Up filteredData Y
-				{
-					for (int fDH = 0, pDH = 0; fDH < horizSteps; fDH += _poolSampleWH, pDH++) // Right filteredData X
-					{
-						float[,] sample = new float[_poolSampleWH, _poolSampleWH];
-						for (int y = 0; y < _poolSampleWH; y++) // Up local area Y
-						{
-							for (int x = 0; x < _poolSampleWH; x++) // Right local area X
-							{
-								sample[x, y] = filteredData[fDH + x, fDV + y];
-							}
-						}
-						pooledData[pDH, pDV] = _poolOperation(sample);
-					}
-				} // CONTINUE HERE FIX ALL THIS MAN IT NEEDS TO ACTUALLY DAMN WORK LIKE WHAT DA HELL BRUH WHY ONLY NOW REALISE THIS LIKE BRUH AT LEAST IT'S WAY SIMPLER BUT STILL REALLY DAMN ANNOYING
-
-				// Set current output channel
-				outChannel[outputIndex] = pooledData;
 			}
 
-			return outChannel;
+			// Pool
+			float[,] pooledChannel = new float[convolutedChannel.GetLength(0) / _poolSampleWH, convolutedChannel.GetLength(1) / _poolSampleWH];
+			for (int poolVert = pooledChannel.GetLength(1) - 1; poolVert >= 0; poolVert--) // Top, down (pool grid)
+			{
+				for (int poolHoriz = 0; poolHoriz < pooledChannel.GetLength(0); poolHoriz++) // Left, rightwards (pool grid)
+				{
+					// Translate to convoluted channel's coordinates
+					int convX = poolHoriz * _poolSampleWH, convY = poolVert * _poolSampleWH;
+					float[,] sample = new float[_poolSampleWH, _poolSampleWH];
+					for (int y = _poolSampleWH - 1; y >= 0; y--) // Top, down (local conv offset)
+					{
+						for (int x = 0; x < _poolSampleWH; x++) // Left, right (local conv offset)
+						{
+							sample[x, y] = convolutedChannel[convX + x, convY + y]; // Technically not entirely correct, but it's position does not matter for any of the operations.
+						}
+					}
+					pooledChannel[poolHoriz, poolVert] = _poolOperation(sample);
+				}
+			}
+
+			return pooledChannel;
 		}
 	}
 
