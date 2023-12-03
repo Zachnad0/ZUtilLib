@@ -16,11 +16,12 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		private Equations.GraphEquation[] _filterActivFuncs;
 		private Operations.ConvOp[] _poolingMethods;
 		private int[] _kernelWHs, _poolSampleWHs;
-		private (int W, int H) _inputChannelsSize;
-		private int _inputNodeCount;
+		private NDNodeActivFunc _fcNNActivFunc;
+		private (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
+		private int _inputNodeCount, _outputNodeCount;
 		private bool _initialized = false;
 
-		public ConvolutionalNeuralNetworkMono(int inputNodeCount, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations, (int W, int H) inputNodeChannelsSize) // TODO add step settings??? (no pool step though (is auto))
+		public ConvolutionalNeuralNetworkMono(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
 			IEnumerable<Array> lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // It works...
@@ -31,9 +32,12 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_kernelWHs = kernelWHs;
 			_poolSampleWHs = poolSampleWHs;
 			_inputNodeCount = inputNodeCount;
+			_outputNodeCount = outputNodeCount;
+			_finalNNHiddenLayersCH = finalNNHiddenLayersCH;
 			_filterActivFuncs = convActivationFuncs.Select(t => Equations.GetEquationFromType(t)).ToArray();
 			_poolingMethods = poolingOperations.Select(t => Operations.GetOperationFromType(t)).ToArray();
 			_inputChannelsSize = inputNodeChannelsSize;
+			_fcNNActivFunc = finalNNActivFunc;
 
 			// Array init
 			InputNodes = new PolyMatrixInputNodeMono[inputNodeCount];
@@ -42,7 +46,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				ConvAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
 		}
 
-		public void InitializeThis(float initialWeightAmp = 1)
+		public void InitializeThis(float initialWeightAmp = 1) // TODO test IntializeThis() overload #1
 		{
 			Random random = new Random();
 			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
@@ -85,24 +89,22 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				}
 			}
 
-			// Calculate grand total of pixels remaining after all convolutions and pooling for number of inputs
-			//(int W, int H)[] layerDimensions = _inputChannelSizes.Clone() as (int W, int H)[];
-			//for (int cpLayer = 0; cpLayer < ConvAndPoolNodes.Length; cpLayer++)
-			//{
-			//	for (int n = 0; n < ConvAndPoolNodes[cpLayer].Length; n++)
-			//	{
-			//		for (int inLayer = 0; inLayer < layerDimensions.Length; inLayer++)
-			//		{
-			//			// Conv reduction
-			//			layerDimensions[inLayer].W -= _kernelWHs[cpLayer] - 1;
-			//			layerDimensions[inLayer].H -= _kernelWHs[cpLayer] - 1;
-			//			// Pool reduction
-			//			layerDimensions[inLayer].W /= _poolSampleWHs[cpLayer];
-			//			layerDimensions[inLayer].H /= _poolSampleWHs[cpLayer];
-			//		}
-			//	}
-			//}
-			//int sumOfRemainingPixels = layerDimensions.Sum(d => d.W * d.H);
+			// Calculate input length for FullyConnectedNN
+			(int Width, int Height) = _inputChannelsSize;
+			int lastChannelCount = 0;
+			for (int lyrN = 0; lyrN < ConvAndPoolNodes.Length; lyrN++)
+			{
+				Width = (Width - _kernelWHs[lyrN] + 1) / _poolSampleWHs[lyrN];
+				Height = (Height - _kernelWHs[lyrN] + 1) / _poolSampleWHs[lyrN];
+				lastChannelCount = ConvAndPoolNodes[lyrN].Length;
+			}
+			int totalLength = Width * Height * lastChannelCount;
+			if (totalLength <= 0)
+				throw new Exception("InitializeThis critical error: Invalid dimensions or number of channels or something???");
+
+			// Generate neural network
+			FullyConnectedNN = new NeuralNetwork(totalLength, _outputNodeCount, _finalNNHiddenLayersCH.H, _finalNNHiddenLayersCH.W, _fcNNActivFunc);
+			FullyConnectedNN.InitializeThis(initialWeightAmp);
 
 			_initialized = true;
 		}
@@ -120,17 +122,17 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_initialized = true;
 		}
 
-		public ConvNetworkResult ComputeResultMono(params float[][,] monoPixelChannels)
+		public float[] ComputeResultMono(params float[][,] inputChannels)
 		{
 			if (!_initialized)
 				throw new Exception("ComputeResultMono critical error: CNN not initialized.");
 			// Check input validity
-			if (monoPixelChannels.Length != _inputNodeCount)
+			if (inputChannels.Length != _inputNodeCount)
 				throw new Exception("ComputeResultMono critical error: invalid number of provided input channels");
 
 			// Normalize all channels on all inputs
-			for (int i = 0; i < monoPixelChannels.Length; i++)
-				monoPixelChannels[i] = monoPixelChannels[i].NormalizeMatrix(false);
+			for (int i = 0; i < inputChannels.Length; i++)
+				inputChannels[i] = inputChannels[i].NormalizeMatrix(false);
 
 			// TODO Complete computation result method.
 			return default;
@@ -232,21 +234,5 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 	{
 		/// <returns>float[channel][x, y]</returns>
 		public float[,] CalculateData();
-	}
-
-	public readonly struct ConvNetworkResult
-	{
-		public int DecidedType { get; }
-		public float CertaintyOfType { get; }
-		public Vector2 TopLeftBound { get; }
-		public Vector2 BottomRightBound { get; }
-
-		internal ConvNetworkResult(int decidedType, float certaintyOfType, Vector2 topLeftBound, Vector2 bottomRightBound)
-		{
-			DecidedType = decidedType;
-			CertaintyOfType = certaintyOfType;
-			TopLeftBound = topLeftBound;
-			BottomRightBound = bottomRightBound;
-		}
 	}
 }
