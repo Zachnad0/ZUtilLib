@@ -232,6 +232,201 @@ namespace ZUtilLib
 			return matrix;
 		}
 
+		/// <summary>
+		/// Finds the lowest common multiple of all of the values within an array.
+		/// </summary>
+		/// <param name="values">An array of the values to find the LCM for.</param>
+		/// <returns>The lowest common multiple.</returns>
+		public static double LCM(params double[] values)
+		{
+			var sortedVals = values.OrderByDescending(v => v).ToArray();
+
+			double lCM = sortedVals[0];
+			for (int i = 1; i < sortedVals.Length; i++)
+			{
+				double preLCM = lCM;
+				while (lCM % sortedVals[i] != 0)
+					lCM += preLCM;
+			}
+
+			return lCM;
+		}
+
+		/// <summary>
+		/// Converts an array of lines of strings into a jagged-type character matrix.
+		/// </summary>
+		/// <returns>A completely new 2D jagged character array with no references to the <paramref name="lines"/>.</returns>
+		public static char[][] LinesToCharMatrix(this string[] lines)
+		{
+			int mWidth = lines[0].Length, mHeight = lines.Length;
+			char[][] outMatrix = new char[mWidth][];
+			for (int x = 0; x < mWidth; x++)
+			{
+				outMatrix[x] = new char[mHeight];
+				for (int y = 0; y < mHeight; y++)
+				{
+					outMatrix[x][y] = lines[y][x];
+				}
+			}
+
+			return outMatrix;
+		}
+
+		/// <summary>
+		/// Generates a customizable, nice-looking, human readable representation of a 2D array, as a string.
+		/// </summary>
+		/// <param name="horizSeperator">This string is inserted between each array element of each row.</param>
+		/// <param name="vertSeperator">This string is inserted after each row of elements.</param>
+		/// <returns></returns>
+		public static string ToReadableString<T>(this T[][] matrix, string horizSeperator = "\t", string vertSeperator = "\n")
+		{
+			string outputString = "";
+			int mWidth = matrix.Length, mHeight = matrix[0].Length; ;
+			for (int y = 0; y < mHeight; y++)
+			{
+				for (int x = 0; x < mWidth; x++)
+					outputString += $"{(x != 0 ? horizSeperator : "")}{matrix[x][y]}";
+				outputString += y != mWidth - 1 ? vertSeperator : "";
+			}
+
+			return outputString;
+		}
+
+		/// <summary>
+		/// Rotates the matrix 90 degrees if <paramref name="clockwise"/>, otherwise counter-clockwise.
+		/// </summary>
+		/// <param name="clockwise">True if matrix should be rotated clockwise, false for anti-clockwise.</param>
+		/// <returns>A new matrix containing the elements in rotated positions depending on <paramref name="clockwise"/>.</returns>
+		public static T[][] RotateMatrix<T>(this T[][] matrix, bool clockwise)
+		{
+			int origMHeight = matrix[0].Length, origMWidth = matrix.Length;
+			T[][] outMatrix = new T[origMHeight][];
+			for (int i = 0; i < origMHeight; i++)
+				outMatrix[i] = new T[origMWidth];
+
+			for (int origMY = 0; origMY < origMHeight; origMY++)
+			{
+				for (int origMX = 0; origMX < origMWidth; origMX++)
+				{
+					if (clockwise)
+						outMatrix[origMHeight - 1 - origMY][origMX] = matrix[origMX][origMY];
+					else
+						outMatrix[origMY][origMWidth - 1 - origMX] = matrix[origMX][origMY];
+				}
+			}
+
+			return outMatrix;
+		}
+		/// <summary>
+		/// Rotates the matrix 90 degrees if <paramref name="clockwise"/>, otherwise counter-clockwise.
+		/// </summary>
+		/// <param name="clockwise">True if matrix should be rotated clockwise, false for anti-clockwise.</param>
+		/// <returns>A new matrix containing the elements in rotated positions depending on <paramref name="clockwise"/>.</returns>
+		public static T[,] RotateMatrix<T>(this T[,] matrix, bool clockwise)
+		{
+			int origMHeight = matrix.GetLength(1), origMWidth = matrix.GetLength(0);
+			T[,] outMatrix = new T[origMHeight, origMWidth];
+
+			for (int origMY = 0; origMY < origMHeight; origMY++)
+			{
+				for (int origMX = 0; origMX < origMWidth; origMX++)
+				{
+					if (clockwise)
+						outMatrix[origMHeight - 1 - origMY, origMX] = matrix[origMX, origMY];
+					else
+						outMatrix[origMY, origMWidth - 1 - origMX] = matrix[origMX, origMY];
+				}
+			}
+
+			return outMatrix;
+		}
+
+		/// <summary>
+		/// Compares the two matrices' dimensions and elements to determine their identicalness.
+		/// </summary>
+		/// <returns>Whether all of their practical properties are identical.</returns>
+		public static bool Identical<T>(this T[][] matrix, T[][] otherMatrix)
+		{
+			if (matrix is null || otherMatrix is null || matrix.Length != otherMatrix.Length || matrix[0].Length != otherMatrix[0].Length)
+				return false;
+
+			int mWidth = matrix.Length, mHeight = matrix[0].Length;
+			for (int y = 0; y < mHeight; y++)
+				for (int x = 0; x < mWidth; x++)
+					if (!matrix[x][y].Equals(otherMatrix[x][y]))
+						return false;
+
+			return true;
+		}
+		/// <summary>
+		/// Compares the two matrices' dimensions and elements to determine their identicalness.
+		/// </summary>
+		/// <returns>Whether all of their practical properties are identical.</returns>
+		public static bool Identical<T>(this T[,] matrix, T[,] otherMatrix)
+		{
+			if (matrix is null || otherMatrix is null || matrix.GetLength(0) != otherMatrix.GetLength(0) || matrix.GetLength(1) != otherMatrix.GetLength(1))
+				return false;
+
+			int mWidth = matrix.GetLength(0), mHeight = matrix.GetLength(1);
+			for (int y = 0; y < mHeight; y++)
+				for (int x = 0; x < mWidth; x++)
+					if (!matrix[x, y].Equals(otherMatrix[x, y]))
+						return false;
+
+			return true;
+		}
+
+		/// <summary>
+		/// Converts a <u>rectangular</u> jagged matrix into a non-jagged rectangular matrix.
+		/// </summary>
+		/// <returns>A 2D non-jagged matrix of the values of the provided jagged matrix.</returns>
+		public static T[,] ToNonJaggedMatrix<T>(this T[][] matrix)
+		{
+			if (matrix is null || matrix.Any(c => c.Length != matrix[0].Length))
+				throw new ArgumentException();
+
+			T[,] newMatrix = new T[matrix.Length, matrix[0].Length];
+			int mWidth = newMatrix.GetLength(0), mHeight = newMatrix.GetLength(1);
+			for (int y = 0; y < mHeight; y++)
+				for (int x = 0; x < mWidth; x++)
+					newMatrix[x, y] = matrix[x][y];
+
+			return newMatrix;
+		}
+
+		/// <summary>
+		/// Converts a non-jagged matrix into a jagged matrix.
+		/// </summary>
+		/// <returns>A 2D jagged matrix of the values of the provided matrix.</returns>
+		public static T[][] ToJaggedMatrix<T>(this T[,] matrix)
+		{
+			if (matrix == null)
+				throw new ArgumentNullException();
+
+			int mWidth = matrix.GetLength(0), mHeight = matrix.GetLength(1);
+			T[][] outMatrix = new T[mWidth][];
+			for (int x = 0; x < mWidth; x++)
+			{
+				outMatrix[x] = new T[mHeight];
+				for (int y = 0; y < mHeight; y++)
+					outMatrix[x][y] = matrix[x, y];
+			}
+
+			return outMatrix;
+		}
+
+		/// <summary>
+		/// <i>Properly</i> clones this matrix without the worry of the usual mistakes.
+		/// </summary>
+		public static T[][] CloneJaggedMatrix<T>(this T[][] matrix)
+		{
+			int mWidth = matrix.Length;
+			T[][] outMatrix = new T[matrix.Length][];
+			for (int x = 0; x < mWidth; x++)
+				outMatrix[x] = (T[])matrix[x].Clone();
+			return outMatrix;
+		}
+
 		public static class GreekAlphabet
 		{
 			public const char alpha = 'α', Alpha = 'Α', beta = 'β', Beta = 'Β', gamma = 'γ', Gamma = 'Γ', delta = 'δ', Delta = 'Δ', epsilon = 'ε', Epsilon = 'Ε', zeta = 'ζ', Zeta = 'Ζ', eta = 'η', Eta = 'Η', theta = 'θ', Theta = 'Θ', iota = 'ι', Iota = 'Ι', kappa = 'κ', Kappa = 'Κ', lambda = 'λ', Lambda = 'Λ', mu = 'μ', Mu = 'Μ', nu = 'ν', Nu = 'Ν', xi = 'ξ', Xi = 'Ξ', omicron = 'ο', Omicron = 'Ο', pi = 'π', Pi = 'Π', rho = 'ρ', Rho = 'Ρ', sigma = 'σ', Sigma = 'Σ', tau = 'τ', Tau = 'Τ', upsilon = 'υ', Upsilon = 'Υ', phi = 'φ', Phi = 'Φ', chi = 'χ', Chi = 'Χ', psi = 'ψ', Psi = 'Ψ', omega = 'ω', Omega = 'Ω';

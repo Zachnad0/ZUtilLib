@@ -8,9 +8,10 @@
     <PackageId>Zachnad0.UtilLib</PackageId>
     <Description>This is merely a perpetually WIP personal library intended only for personal use, though if one finds it useful, they may use it freely due to it being on a BSD 3-clause license.
 Features:
-- Generic utility methods
-- Custom object-oriented algebra and calculus tool
-- Experimental AI neural networks (general and convolutional) plus training utils</Description>
+- MANY generic utility methods, especially for 2D arrays/matrices!
+- Custom object-oriented algebra and calculus tool (WIP).
+- Experimental AI neural networks (general AND convolutional (v3+)) plus training utils.
+- ZMatrix class for more easily working with matrices (v3+).</Description>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
     <PackageIcon>icon.png</PackageIcon>
@@ -18,7 +19,7 @@ Features:
     <NeutralLanguage>en-001</NeutralLanguage>
     <Version>1.4.0</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>2.0.0:
+    <PackageReleaseNotes>3.0.0: // This update is, um, really something to say the very least. That is why I skipped version 2.
 - ADDED 5 more activation functions.
 - ADDED byte[,].ToFloatMatrix() which converts a matrix of bytes into a matrix of floats.
 - ADDED float[,].NormalizeMatrix(bool) that returns a normalized float matrix.
@@ -28,19 +29,26 @@ Features:
 - CHANGED static class GraphStuff name to Equations
 - ADDED System.Random.NextMatrix(int, int, ?bool) that returns a random float matrix of given size.
 - ADDED System.Random.NextArray(int, ?bool) that returns a random float array of given size.
-- ADDED ZMatrix thing which has some implicit conversion and operators and stuff for dealing with float matrices.
+- ADDED entire ZMatrix class which has some implicit conversion and operators and stuff for dealing with float matrices.
 - ADDED T[,].Foreach&lt;T&gt;(Action&lt;int, int, T&gt;) that runs an action for each value, utilizing x, y, and the value at that point of the matrix.
 - ADDED T[,].SetEach&lt;T&gt;(Func&lt;int, int, T, T&gt;) that runs a func overwriting each value, utilizing x, y, and current value in the matrix.
+- ADDED  ZUtils.LCM(double[]) for getting the lowest common mutliple.
+- ADDED ZUtils.LinesToCharMatrix(string[]) for converting lines of strings into a char matrix.
+- ADDED A LOT MORE TO ZUtils, incl. to and from jagged matrix conversions (ridiculously convenient!!!), and accompanying useful stuff.
+
 1.3.4:
 - ADDED allow decimal number parameter for ZUtils.FilterNumbers.
 - FIXED README AI tutorial info to be actually up to date, and finally made it actually markdown instead of HTML.
 - FIXED ZAI.Training.NeuralNetTrainingOptions so that the fields LearningRate and MutateChance are changeable (because they should be).
 - FIXED ZAI.Training.NeuralNetTrainingOptions so that all of the fields are included for JSON serialization, and there is a JsonConstructor, therefore it is now serializable.
+
 1.3.3:
 - FIXED the fact that multithreading was LIMITED TO 1???
 - ADDED method for quickly deriving a generation based off an array of pre-existing neural networks.
+
 1.3.2:
 - ADDED Greek alphabet, because why not.
+
 1.3.1:
 - ADDED Neural network training async task, for training some/an initial network(s) or a new network, against  a provided multi-input and output target function.
 - FIXED Random network generation only generating positive initial weights and biases, so amplitude is actually treated as such.
