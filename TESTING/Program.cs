@@ -77,13 +77,21 @@ namespace LIBRARYTESTING
 		public static void Main(string[] args)
 		{
 			// Conv net testing
-			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.ReLU }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+			ConvolutionalNeuralNetworkMono testConvNetAlpha = new ConvolutionalNeuralNetworkMono(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
 
-			testConvNetAlpha.InitializeThis(4);
+			testConvNetAlpha.InitializeThis(3);
 
-			float[,] inputMatrix = Random.Shared.NextMatrix(100, 100, true);
+			float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
 
-			testConvNetAlpha.ComputeResultMono(inputMatrix);
+			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix);
+			finalResult.Foreach((i, v) => Console.WriteLine(v));
+
+			// Derived conv net testing
+			ConvolutionalNeuralNetworkMono testConvNetBeta = new ConvolutionalNeuralNetworkMono(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+
+			testConvNetBeta.InitializeThis(testConvNetBeta, 0.2f, 3f);
+
+			Console.ReadKey();
 		}
 
 		//public static void Main(string[] args)

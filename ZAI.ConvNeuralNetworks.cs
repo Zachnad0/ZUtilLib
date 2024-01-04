@@ -7,7 +7,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
 	public class ConvolutionalNeuralNetworkMono
 	{
-		private PolyMatrixInputNodeMono[] InputNodes { get; set; }
+		private MatrixInputNodeMono[] InputNodes { get; set; }
 		/// <summary>[Layer][Node]</summary>
 		private FilterPoolNodeMono[][] ConvAndPoolNodes { get; set; }
 		private NeuralNetwork FullyConnectedNN { get; set; }
@@ -20,7 +20,8 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		private int _inputNodeCount, _outputNodeCount;
 		private bool _initialized = false;
 
-		public ConvolutionalNeuralNetworkMono(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO add step settings??? (no pool step though (is auto))
+		// TODO add overload that uses an array of layer settings classes for more compact and modular construction
+		public ConvolutionalNeuralNetworkMono(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO (post 3.0.0) add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
 			IEnumerable<Array> lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // It works...
@@ -39,20 +40,20 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_fcNNActivFunc = finalNNActivFunc;
 
 			// Array init
-			InputNodes = new PolyMatrixInputNodeMono[inputNodeCount];
+			InputNodes = new MatrixInputNodeMono[inputNodeCount];
 			ConvAndPoolNodes = new FilterPoolNodeMono[convAndPoolLayerHeights.Length][];
 			for (int i = 0; i < convAndPoolLayerHeights.Length; i++)
 				ConvAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
 		}
 
-		public void InitializeThis(float initialWeightAmp = 1) // TODO test IntializeThis() overload #1
+		public void InitializeThis(float initialWeightAmp = 1)
 		{
 			Random random = new Random();
 			float GetRandVal() => (float)random.NextDouble() * (initialWeightAmp * 2) - initialWeightAmp;
 
 			// Generate input nodes
 			for (int n = 0; n < _inputNodeCount; n++)
-				InputNodes[n] = new PolyMatrixInputNodeMono();
+				InputNodes[n] = new MatrixInputNodeMono();
 
 			// Generate convolutional & pooling nodes
 			for (int layer = 0; layer < ConvAndPoolNodes.Length; layer++)
@@ -95,8 +96,8 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			{
 				Width = (Width - _kernelWHs[lyrN] + 1) / _poolSampleWHs[lyrN];
 				Height = (Height - _kernelWHs[lyrN] + 1) / _poolSampleWHs[lyrN];
-				lastChannelCount = ConvAndPoolNodes[lyrN].Length;
 			}
+			lastChannelCount = ConvAndPoolNodes[^1].Length;
 			int totalLength = Width * Height * lastChannelCount;
 			if (totalLength <= 0)
 				throw new Exception("InitializeThis critical error: Invalid dimensions or number of channels or something???");
@@ -110,13 +111,11 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 		public void InitializeThis(ConvolutionalNeuralNetworkMono basedOnNet, float mutateChance, float learningRate)
 		{
-			// TODO InitializeThis method that is based on the provided network
-
 			// Verify other network specifications, but don't bother too much
 			if (basedOnNet == null || !basedOnNet._initialized || basedOnNet.InputNodes.Length != InputNodes.Length || basedOnNet._kernelWHs.Length != _kernelWHs.Length || basedOnNet.ConvAndPoolNodes.Length != ConvAndPoolNodes.Length)
 				throw new Exception("InitializeThis critical error: basedOnNet differs from the current network's specs in some way.");
 
-			// CONINUE HERE with the InitializeThis method by adding the carrying over plus potential mutation (research how it should be done for kernels)
+			// CONTINUE HERE with the InitializeThis method by adding the carrying over plus potential mutation (research how it should be done for kernels)
 
 			_initialized = true;
 		}
@@ -127,20 +126,36 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				throw new Exception("ComputeResultMono critical error: CNN not initialized.");
 			// Check input validity
 			if (inputChannels.Length != _inputNodeCount)
-				throw new Exception("ComputeResultMono critical error: invalid number of provided input channels");
+				throw new Exception("ComputeResultMono critical error: invalid number of provided input channels.");
+			// Check channels size validity
+			if (inputChannels.Any(ch => ch.GetLength(0) != _inputChannelsSize.W || ch.GetLength(1) != _inputChannelsSize.H))
+				throw new Exception("ComputeResultMono critical error: invalid size of a provided input channel.");
 
-			// Normalize all channels on all inputs
-			for (int i = 0; i < inputChannels.Length; i++)
-				inputChannels[i] = inputChannels[i].NormalizeMatrix(false);
+			//// Normalize all channels on all inputs
+			//for (int i = 0; i < inputChannels.Length; i++)
+			//	inputChannels[i] = inputChannels[i].NormalizeMatrix(false);
 
-			// TODO Complete computation result method.
-			return default;
+			// Clear cached node data, whilst setting inputs
+			InputNodes.Foreach((i, n) => n._cachedData = inputChannels[i]);
+			ConvAndPoolNodes.Foreach((x, y, n) => n._cachedData = null);
+
+			// Calculate the final channels, flatten, then pass into final NN for result
+			float[] flattenedChannels = new float[FullyConnectedNN.InputLayer.Length];
+			int fN = 0;
+			for (int nodeN = 0; nodeN < ConvAndPoolNodes[^1].Length; nodeN++)
+			{
+				float[,] currChannel = ConvAndPoolNodes[^1][nodeN].CalculateData();
+				currChannel.Foreach((x, y, v) => { flattenedChannels[fN] = v; fN++; });
+			}
+			float[] finalResult = FullyConnectedNN.PerformCalculations(flattenedChannels);
+
+			return finalResult;
 		}
 	}
 
 	internal class FilterPoolNodeMono : IMonoConvNeuralNode
 	{
-		private float[,] _cData = null;
+		internal float[,] _cachedData = null;
 		public (IMonoConvNeuralNode Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
 		public float Bias { get; private set; }
 
@@ -157,15 +172,15 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_poolSampleWH = poolSampleWH;
 		}
 
-		public float[,] CalculateData() // TODO Test CalculateData()
+		public float[,] CalculateData()
 		{
-			if (_cData != null) return _cData;
+			if (_cachedData != null) return _cachedData;
 
 			// Calculate all previous node and channel data
 			float[][,] allChannelsData = NodeLinkKernels.Select(nlk => nlk.Node.CalculateData()).ToArray(); // float[channel][x, y]
 
 			int kernelWH = NodeLinkKernels[0].Kernel.GetLength(0); // Can't possibly go wrong, right?
-			int chnW = allChannelsData[0].GetLength(0), chnH = allChannelsData.GetLength(1);
+			int chnW = allChannelsData[0].GetLength(0), chnH = allChannelsData[0].GetLength(1);
 			if (!allChannelsData.All(m => m.GetLength(0) == chnW && m.GetLength(1) == chnH))
 				throw new Exception("CalculateData critical error: two input nodes/channels have differing dimensions??? (This shouldn't happen, ever.)");
 			float[,] convolutedChannel = new float[chnW - kernelWH + 1, chnH - kernelWH + 1];
@@ -203,7 +218,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 					// Translate to convoluted channel's coordinates
 					int convX = poolHoriz * _poolSampleWH, convY = poolVert * _poolSampleWH;
 					float[,] sample = new float[_poolSampleWH, _poolSampleWH];
-					for (int y = _poolSampleWH - 1; y >= 0; y--) // Top, down (local conv offset)
+					for (int y = 0; y < _poolSampleWH; y++) // Bottom, up (local conv offset)
 					{
 						for (int x = 0; x < _poolSampleWH; x++) // Left, right (local conv offset)
 						{
@@ -218,7 +233,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		}
 	}
 
-	internal class PolyMatrixInputNodeMono : IMonoConvNeuralNode
+	internal class MatrixInputNodeMono : IMonoConvNeuralNode
 	{
 		internal float[,] _cachedData = null;
 		public float[,] CalculateData()

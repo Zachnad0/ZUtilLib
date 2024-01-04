@@ -15,9 +15,9 @@ Features:
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Zachnad0/ZUtilLib</RepositoryUrl>
     <PackageIcon>icon.png</PackageIcon>
-    <PackageTags>Zachnad0; Utility; AI; Neural-Network;</PackageTags>
+    <PackageTags>Zachnad0; Utility; Matrix-Utils; AI; Neural-Network; Convolutional-Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>1.4.0</Version>
+    <Version>3.0.0</Version>
     <RepositoryType>git</RepositoryType>
     <PackageReleaseNotes>3.0.0: // This update is, um, really something to say the very least. That is why I skipped version 2.
 - ADDED 5 more activation functions.
@@ -30,11 +30,11 @@ Features:
 - ADDED System.Random.NextMatrix(int, int, ?bool) that returns a random float matrix of given size.
 - ADDED System.Random.NextArray(int, ?bool) that returns a random float array of given size.
 - ADDED entire ZMatrix class which has some implicit conversion and operators and stuff for dealing with float matrices.
-- ADDED T[,].Foreach&lt;T&gt;(Action&lt;int, int, T&gt;) that runs an action for each value, utilizing x, y, and the value at that point of the matrix.
+- ADDED (T[,] OR T[][] OR T[]).Foreach&lt;T&gt;(Action&lt;int, int, T&gt; (just Action&lt;int, T&gt; for array)) that runs an action for each value, utilizing x, y, (i for array) and the value at that point of the matrix (or array).
 - ADDED T[,].SetEach&lt;T&gt;(Func&lt;int, int, T, T&gt;) that runs a func overwriting each value, utilizing x, y, and current value in the matrix.
-- ADDED  ZUtils.LCM(double[]) for getting the lowest common mutliple.
+- ADDED  ZUtils.LCM(double[]) for getting the lowest common multiple.
 - ADDED ZUtils.LinesToCharMatrix(string[]) for converting lines of strings into a char matrix.
-- ADDED A LOT MORE TO ZUtils, incl. to and from jagged matrix conversions (ridiculously convenient!!!), and accompanying useful stuff.
+- ADDED A LOT MORE TO ZUtils, incl. to and from jagged matrix conversions (ridiculously convenient!!!), and accompanying useful stuff. I recommend checking source code for serious usage.
 
 1.3.4:
 - ADDED allow decimal number parameter for ZUtils.FilterNumbers.
