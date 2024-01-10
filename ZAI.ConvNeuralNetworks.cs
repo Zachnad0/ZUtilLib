@@ -5,7 +5,7 @@ using ZUtilLib.ZAI.FFNeuralNetworks;
 
 namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
-	public class ConvolutionalNeuralNetworkMono
+	public class ConvolutionalNeuralNetwork
 	{
 		private MatrixInputNodeMono[] InputNodes { get; set; }
 		/// <summary>[Layer][Node]</summary>
@@ -15,13 +15,14 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		private Equations.GraphEquation[] _filterActivFuncs;
 		private Operations.ConvOp[] _poolingMethods;
 		private int[] _kernelWHs, _poolSampleWHs;
-		private NDNodeActivFunc _fcNNActivFunc;
+		private NDNodeActivFunc _finalNNActivFunc;
 		private (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
 		private int _inputNodeCount, _outputNodeCount;
 		private bool _initialized = false;
 
-		// TODO add overload that uses an array of layer settings classes for more compact and modular construction
-		public ConvolutionalNeuralNetworkMono(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO (post 3.0.0) add step settings??? (no pool step though (is auto))
+		// TODO (post 3.0.0) add overload that uses an array of layer settings classes for more compact and modular construction
+		// CONTINUE HERE because it's XML DOCUMENTATION TIME! 😔
+		public ConvolutionalNeuralNetwork(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO (post 3.0.0) add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
 			IEnumerable<Array> lengths = new List<Array>() { poolSampleWHs, convAndPoolLayerHeights, convActivationFuncs, poolingOperations }; // It works...
@@ -37,7 +38,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_filterActivFuncs = convActivationFuncs.Select(t => Equations.GetEquationFromType(t)).ToArray();
 			_poolingMethods = poolingOperations.Select(t => Operations.GetOperationFromType(t)).ToArray();
 			_inputChannelsSize = inputNodeChannelsSize;
-			_fcNNActivFunc = finalNNActivFunc;
+			_finalNNActivFunc = finalNNActivFunc;
 
 			// Array init
 			InputNodes = new MatrixInputNodeMono[inputNodeCount];
@@ -69,7 +70,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						{
 							nodeLinkKernels[inpNode] = (
 								InputNodes[inpNode],
-								((float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)).NormalizeMatrix(true)
+								(float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
 								);
 						}
 					}
@@ -80,7 +81,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						{
 							nodeLinkKernels[prevLyrNode] = (
 								ConvAndPoolNodes[layer - 1][prevLyrNode],
-								((float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)).NormalizeMatrix(true)
+								(float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
 								);
 						}
 					}
@@ -103,19 +104,64 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				throw new Exception("InitializeThis critical error: Invalid dimensions or number of channels or something???");
 
 			// Generate neural network
-			FullyConnectedNN = new NeuralNetwork(totalLength, _outputNodeCount, _finalNNHiddenLayersCH.H, _finalNNHiddenLayersCH.W, _fcNNActivFunc);
+			FullyConnectedNN = new NeuralNetwork(totalLength, _outputNodeCount, _finalNNHiddenLayersCH.H, _finalNNHiddenLayersCH.W, _finalNNActivFunc);
 			FullyConnectedNN.InitializeThis(initialWeightAmp);
 
 			_initialized = true;
 		}
 
-		public void InitializeThis(ConvolutionalNeuralNetworkMono basedOnNet, float mutateChance, float learningRate)
+		public void InitializeThis(ConvolutionalNeuralNetwork basedOnNet, float mutateChance, float learningRate)
 		{
 			// Verify other network specifications, but don't bother too much
 			if (basedOnNet == null || !basedOnNet._initialized || basedOnNet.InputNodes.Length != InputNodes.Length || basedOnNet._kernelWHs.Length != _kernelWHs.Length || basedOnNet.ConvAndPoolNodes.Length != ConvAndPoolNodes.Length)
 				throw new Exception("InitializeThis critical error: basedOnNet differs from the current network's specs in some way.");
 
-			// CONTINUE HERE with the InitializeThis method by adding the carrying over plus potential mutation (research how it should be done for kernels)
+			// Init random gen and input nodes
+			Random rand = new Random();
+			float GetRandAmpVal() => (float)rand.NextDouble() * learningRate * 2 - learningRate;
+			for (int i = 0; i < _inputNodeCount; i++)
+				InputNodes[i] = new MatrixInputNodeMono();
+
+			// Clone over conv-pool nodes, regenerate their links and kernels with (maybe) slightly modified kernels.
+			for (int lN = 0; lN < ConvAndPoolNodes.Length; lN++)
+			{
+				for (int nN = 0; nN < ConvAndPoolNodes[lN].Length; nN++)
+				{
+					// Copy kernels based on links
+					float[][,] kernelClones = basedOnNet.ConvAndPoolNodes[lN][nN].NodeLinkKernels.Select(t => (float[,])t.Kernel.Clone()).ToArray();
+					float bias = basedOnNet.ConvAndPoolNodes[lN][nN].Bias;
+					if (rand.NextDouble() <= mutateChance)
+						bias += GetRandAmpVal();
+
+					// Quick check to ensure no differences or anything
+					if (kernelClones.Length != (lN == 0 ? _inputNodeCount : ConvAndPoolNodes[lN - 1].Length))
+						throw new Exception("InitializeThis critical error: basedOnNet node has a different number of links on at least one node.");
+
+					// Mutate parts of kernels if necessary
+					kernelClones.Foreach((i, arr) => arr.SetEach((x, y, v) => rand.NextDouble() <= mutateChance ? v + GetRandAmpVal() : v));
+
+					// Node link setup
+					(IMonoConvNeuralNode, float[,])[] nodeLinkKernels;
+					if (lN == 0) // Links to input nodes
+					{
+						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[_inputNodeCount];
+						for (int iN = 0; iN < _inputNodeCount; iN++)
+							nodeLinkKernels[iN] = (InputNodes[iN], kernelClones[iN]);
+					}
+					else // Links to prev conv-pool layer
+					{
+						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[ConvAndPoolNodes[lN - 1].Length];
+						for (int prevN = 0; prevN < nodeLinkKernels.Length; prevN++)
+							nodeLinkKernels[prevN] = (ConvAndPoolNodes[lN - 1][prevN], kernelClones[prevN]);
+					}
+
+					ConvAndPoolNodes[lN][nN] = new FilterPoolNodeMono(nodeLinkKernels, bias, _poolSampleWHs[lN], _filterActivFuncs[lN], _poolingMethods[lN]);
+				}
+			}
+
+			// Fully-connected NN derivation
+			FullyConnectedNN = new NeuralNetwork(basedOnNet.FullyConnectedNN.InputLayer.Length, _outputNodeCount, _finalNNHiddenLayersCH.H, _finalNNHiddenLayersCH.W, _finalNNActivFunc);
+			FullyConnectedNN.InitializeThis(basedOnNet.FullyConnectedNN, mutateChance, learningRate);
 
 			_initialized = true;
 		}

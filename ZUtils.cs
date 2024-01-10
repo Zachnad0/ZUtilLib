@@ -236,14 +236,14 @@ namespace ZUtilLib
 		/// <summary>
 		/// Iterates through the array and runs <paramref name="action"/> for each value, passing in the current i and <typeparamref name="T"/>.
 		/// </summary>
-		/// <param name="matrix">The matrix.</param>
+		/// <param name="array">The array.</param>
 		/// <param name="action">The method that takes in i and the current <typeparamref name="T"/>.</param>
-		public static T[] Foreach<T>(this T[] matrix, Action<int, T> action)
+		public static T[] Foreach<T>(this T[] array, Action<int, T> action)
 		{
-			int w = matrix.Length;
+			int w = array.Length;
 			for (int i = 0; i < w; i++)
-				action(i, matrix[i]);
-			return matrix;
+				action(i, array[i]);
+			return array;
 		}
 
 		/// <summary>
@@ -258,6 +258,34 @@ namespace ZUtilLib
 				for (int y = 0; y < h; y++)
 					matrix[x, y] = func(x, y, matrix[x, y]);
 			return matrix;
+		}
+		/// <summary>
+		/// Iterates through the matrix and runs <paramref name="func"/> for each value, passing in the current x, y, and <typeparamref name="T"/>, then setting the value of the matrix at that location to be the result.
+		/// </summary>
+		/// <param name="matrix">The matrix.</param>
+		/// <param name="func">The method that takes in x, y and the current <typeparamref name="T"/>, and returns the new current value.</param>
+		public static T[][] SetEach<T>(this T[][] matrix, Func<int, int, T, T> func)
+		{
+			int w = matrix.Length;
+			for (int x = 0; x < w; x++)
+			{
+				int h = matrix[x].Length;
+				for (int y = 0; y < h; y++)
+					matrix[x][y] = func(x, y, matrix[x][y]);
+			}
+			return matrix;
+		}
+		/// <summary>
+		/// Iterates through the array and runs <paramref name="func"/> for each value, passing in the current iterator and <typeparamref name="T"/>, then setting the value of the array at that location to be the result.
+		/// </summary>
+		/// <param name="array">The array.</param>
+		/// <param name="func">The method that takes in 'i' and the current <typeparamref name="T"/>, and returns the new current value.</param>
+		public static T[] SetEach<T>(this T[] array, Func<int, T, T> func)
+		{
+			int l = array.Length;
+			for (int i = 0; i < l; i++)
+					array[i] = func(i, array[i]);
+			return array;
 		}
 
 		/// <summary>

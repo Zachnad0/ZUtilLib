@@ -31,7 +31,7 @@ Features:
 - ADDED System.Random.NextArray(int, ?bool) that returns a random float array of given size.
 - ADDED entire ZMatrix class which has some implicit conversion and operators and stuff for dealing with float matrices.
 - ADDED (T[,] OR T[][] OR T[]).Foreach&lt;T&gt;(Action&lt;int, int, T&gt; (just Action&lt;int, T&gt; for array)) that runs an action for each value, utilizing x, y, (i for array) and the value at that point of the matrix (or array).
-- ADDED T[,].SetEach&lt;T&gt;(Func&lt;int, int, T, T&gt;) that runs a func overwriting each value, utilizing x, y, and current value in the matrix.
+- ADDED T[,].SetEach&lt;T&gt;(Func&lt;int, int, T, T&gt;) that runs a func overwriting each value, utilizing x, y, and current value in the matrix. (Also available for T[][] and T[])
 - ADDED  ZUtils.LCM(double[]) for getting the lowest common multiple.
 - ADDED ZUtils.LinesToCharMatrix(string[]) for converting lines of strings into a char matrix.
 - ADDED A LOT MORE TO ZUtils, incl. to and from jagged matrix conversions (ridiculously convenient!!!), and accompanying useful stuff. I recommend checking source code for serious usage.
