@@ -27,3 +27,6 @@ All of these steps are required for the most basic usage of neural networks.
 5. Then clone it via an overload of the InitializeThis method: `secondTestNet.InitializeThis(testNet, 1, 1);`. The two floats following the network to be cloned determine mutation chance and learning rate for it to be cloned by. There's also an optional bool for if you want the changes to be relative (default off).
 
 Packaging networks for JSON serialization can be done using the `PackagedNeuralNetwork` struct in `ZAI.Saving`, by passing the `NeuralNetwork` into the constructor. Unpack the `PackagedNeuralNetwork` by passing it into the `NeuralNetwork` constructor.
+
+## Convolutional Neural Network Usage
+TODO - Add this sometime.

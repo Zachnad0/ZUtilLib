@@ -5,7 +5,7 @@ using ZUtilLib.ZAI.Saving;
 namespace ZUtilLib.ZAI.FFNeuralNetworks
 {
 	/// <summary>
-	/// A neural network instance
+	/// A standard feed-forward neural network instance.
 	/// </summary>
 	public class NeuralNetwork
 	{

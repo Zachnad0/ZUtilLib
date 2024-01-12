@@ -84,7 +84,7 @@ namespace LIBRARYTESTING
 			float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
 
 			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix).NormalizeArray(false);
-			finalResult.Foreach((i, v) => Console.WriteLine(v));
+			finalResult.Foreach((i, v) => Console.WriteLine($"{v}, "));
 			Console.WriteLine("============\n============");
 
 			// Derived conv net testing
@@ -93,7 +93,7 @@ namespace LIBRARYTESTING
 			testConvNetBeta.InitializeThis(testConvNetAlpha, 0.2f, 3f);
 
 			float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix).NormalizeArray(false);
-			finalResult2.Foreach((i, v) => Console.WriteLine(v));
+			finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
 
 			Console.ReadKey();
 		}

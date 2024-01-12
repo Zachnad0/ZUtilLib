@@ -5,6 +5,9 @@ using ZUtilLib.ZAI.FFNeuralNetworks;
 
 namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
+	/// <summary>
+	/// An instance of a convolutional neural network.
+	/// </summary>
 	public class ConvolutionalNeuralNetwork
 	{
 		private MatrixInputNodeMono[] InputNodes { get; set; }
@@ -12,16 +15,28 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		private FilterPoolNodeMono[][] ConvAndPoolNodes { get; set; }
 		private NeuralNetwork FullyConnectedNN { get; set; }
 
-		private Equations.GraphEquation[] _filterActivFuncs;
-		private Operations.ConvOp[] _poolingMethods;
-		private int[] _kernelWHs, _poolSampleWHs;
-		private NDNodeActivFunc _finalNNActivFunc;
-		private (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
-		private int _inputNodeCount, _outputNodeCount;
+		private readonly Equations.GraphEquation[] _filterActivFuncs;
+		private readonly Operations.ConvOp[] _poolingMethods;
+		private readonly int[] _kernelWHs, _poolSampleWHs;
+		private readonly NDNodeActivFunc _finalNNActivFunc;
+		private readonly (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
+		private readonly int _inputNodeCount, _outputNodeCount;
 		private bool _initialized = false;
 
 		// TODO (post 3.0.0) add overload that uses an array of layer settings classes for more compact and modular construction
-		// CONTINUE HERE because it's XML DOCUMENTATION TIME! 😔
+		/// <summary>
+		/// Constructs a new instance of <see cref="ConvolutionalNeuralNetwork"/> with the specifications provided. This instance must then have one of the initializing methods run in order to be fully initialized.<br/><b>Note:</b> all of the array parameters in this constructor should (and must) be the same length (All are for each conv/pool layer, thus the length of the arrays determines the number of layers).
+		/// </summary>
+		/// <param name="inputNodeCount">The number of input channels/matrices/nodes this network accepts. <i>(Note: all of the inputs must have the same size/dimensions)</i></param>
+		/// <param name="outputNodeCount">The number/size of the output array of floats as a final result from the network's computations.</param>
+		/// <param name="inputNodeChannelsSize">The width and height in pixels of the input channels/nodes.</param>
+		/// <param name="finalNNHiddenLayersCH">The number of layers, and the height/node count for each layer, of hidden/internal neural nodes of the internal final feed-forward neural network.</param>
+		/// <param name="finalNNActivFunc">The internal final feed-forward's node activation function type.</param>
+		/// <param name="kernelWHs">The height/width (each one is a square) of the kernels in <b>each conv/pool layer</b>.</param>
+		/// <param name="poolSampleWHs">The height/width (each one is a square) of the sample square for <b>each conv/pool layer</b>.</param>
+		/// <param name="convAndPoolLayerHeights">The number of conv/pool nodes in <b>each conv/pool layer</b>.</param>
+		/// <param name="convActivationFuncs">The activation function applied to the value obtained from each convolution in the conv operation of a conv/pool node, for <b>each conv/pool layer</b>.</param>
+		/// <param name="poolingOperations">The pooling operation/method used by every pooling sample in the layer, for <b>each conv/pool layer</b>.</param>
 		public ConvolutionalNeuralNetwork(int inputNodeCount, int outputNodeCount, (int W, int H) inputNodeChannelsSize, (int Layers, int LayerHeight) finalNNHiddenLayersCH, NDNodeActivFunc finalNNActivFunc, int[] kernelWHs, int[] poolSampleWHs, int[] convAndPoolLayerHeights, NDNodeActivFunc[] convActivationFuncs, ConvPoolingOp[] poolingOperations) // TODO (post 3.0.0) add step settings??? (no pool step though (is auto))
 		{
 			// Settings verification
@@ -35,8 +50,8 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_inputNodeCount = inputNodeCount;
 			_outputNodeCount = outputNodeCount;
 			_finalNNHiddenLayersCH = finalNNHiddenLayersCH;
-			_filterActivFuncs = convActivationFuncs.Select(t => Equations.GetEquationFromType(t)).ToArray();
-			_poolingMethods = poolingOperations.Select(t => Operations.GetOperationFromType(t)).ToArray();
+			_filterActivFuncs = convActivationFuncs.Select(Equations.GetEquationFromType).ToArray();
+			_poolingMethods = poolingOperations.Select(Operations.GetOperationFromType).ToArray();
 			_inputChannelsSize = inputNodeChannelsSize;
 			_finalNNActivFunc = finalNNActivFunc;
 
@@ -47,6 +62,10 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				ConvAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
 		}
 
+		/// <summary>
+		/// Initializes the convolutional neural network by randomly generating all kernels, biases, and weights. Random generation amplitude is determined by <paramref name="initialWeightAmp"/>.<br/>See overload for deriving.
+		/// </summary>
+		/// <param name="initialWeightAmp">The amplitude of randomly generated values.</param>
 		public void InitializeThis(float initialWeightAmp = 1)
 		{
 			Random random = new Random();
@@ -110,6 +129,12 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_initialized = true;
 		}
 
+		/// <summary>
+		/// Initializes the convolutional neural network through copying and mutating from <paramref name="basedOnNet"/>.<br/>See overload for generating random original.
+		/// </summary>
+		/// <param name="basedOnNet">The CNN for this one to be derived from.</param>
+		/// <param name="mutateChance">The chance, in decimal, for a mutation to occur on a given bias, weight, or kernel value.</param>
+		/// <param name="learningRate">The amplitude of random mutations that occur randomly.</param>
 		public void InitializeThis(ConvolutionalNeuralNetwork basedOnNet, float mutateChance, float learningRate)
 		{
 			// Verify other network specifications, but don't bother too much
@@ -166,6 +191,11 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_initialized = true;
 		}
 
+		/// <summary>
+		/// Computes the result this convolutional neural network calculates for the given <paramref name="inputChannels"/>.
+		/// </summary>
+		/// <param name="inputChannels">The channels to be calculated from. All of these must have the same dimensions and should generally probably be normalized. The length of this array must be the same as the number of input nodes specified in the constructor.</param>
+		/// <returns>An array of the computed results, of the length specified in the constructor.</returns>
 		public float[] ComputeResultMono(params float[][,] inputChannels)
 		{
 			if (!_initialized)
@@ -205,9 +235,9 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		public (IMonoConvNeuralNode Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
 		public float Bias { get; private set; }
 
-		private Equations.GraphEquation _activationFunc;
-		private Operations.ConvOp _poolOperation;
-		private int _poolSampleWH;
+		private readonly Equations.GraphEquation _activationFunc;
+		private readonly Operations.ConvOp _poolOperation;
+		private readonly int _poolSampleWH;
 
 		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, int poolSampleWH, Equations.GraphEquation activationFunc, Operations.ConvOp poolOperation)
 		{

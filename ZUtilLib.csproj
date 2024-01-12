@@ -8,7 +8,7 @@
     <PackageId>Zachnad0.UtilLib</PackageId>
     <Description>This is merely a perpetually WIP personal library intended only for personal use, though if one finds it useful, they may use it freely due to it being on a BSD 3-clause license.
 Features:
-- MANY generic utility methods, especially for 2D arrays/matrices!
+- Essential generic utility methods, especially for 2D arrays/matrices!
 - Custom object-oriented algebra and calculus tool (WIP).
 - Experimental AI neural networks (general AND convolutional (v3+)) plus training utils.
 - ZMatrix class for more easily working with matrices (v3+).</Description>
@@ -19,7 +19,8 @@ Features:
     <NeutralLanguage>en-001</NeutralLanguage>
     <Version>3.0.0</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>3.0.0: // This update is, um, really something to say the very least. That is why I skipped version 2.
+    <PackageReleaseNotes>3.0.0: // This update is quite massive and took forever. That is why I skipped version 2.
+- ADDED convolutional neural networks...
 - ADDED 5 more activation functions.
 - ADDED byte[,].ToFloatMatrix() which converts a matrix of bytes into a matrix of floats.
 - ADDED float[,].NormalizeMatrix(bool) that returns a normalized float matrix.
