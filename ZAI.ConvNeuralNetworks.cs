@@ -10,18 +10,20 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 	/// </summary>
 	public class ConvolutionalNeuralNetwork
 	{
-		private MatrixInputNodeMono[] InputNodes { get; set; }
+		internal MatrixInputNodeMono[] InputNodes { get; set; }
 		/// <summary>[Layer][Node]</summary>
-		private FilterPoolNodeMono[][] ConvAndPoolNodes { get; set; }
-		private NeuralNetwork FullyConnectedNN { get; set; }
+		internal FilterPoolNodeMono[][] ConvAndPoolNodes { get; set; }
+		internal NeuralNetwork FullyConnectedNN { get; set; }
 
-		private readonly Equations.GraphEquation[] _filterActivFuncs;
-		private readonly Operations.ConvOp[] _poolingMethods;
-		private readonly int[] _kernelWHs, _poolSampleWHs;
-		private readonly NDNodeActivFunc _finalNNActivFunc;
-		private readonly (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
-		private readonly int _inputNodeCount, _outputNodeCount;
-		private bool _initialized = false;
+		internal readonly NDNodeActivFunc[] _convFuncLayers;
+		internal readonly ConvPoolingOp[] _poolingOpLayers;
+		internal readonly Equations.GraphEquation[] _filterActivFuncs;
+		internal readonly Operations.ConvOp[] _poolingMethods;
+		internal readonly int[] _kernelWHs, _poolSampleWHs;
+		internal readonly NDNodeActivFunc _finalNNActivFunc;
+		internal readonly (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
+		internal readonly int _inputNodeCount, _outputNodeCount;
+		internal bool _initialized = false;
 
 		// TODO (post 3.0.0) add overload that uses an array of layer settings classes for more compact and modular construction
 		/// <summary>
@@ -50,6 +52,8 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_inputNodeCount = inputNodeCount;
 			_outputNodeCount = outputNodeCount;
 			_finalNNHiddenLayersCH = finalNNHiddenLayersCH;
+			_convFuncLayers = convActivationFuncs;
+			_poolingOpLayers = poolingOperations;
 			_filterActivFuncs = convActivationFuncs.Select(Equations.GetEquationFromType).ToArray();
 			_poolingMethods = poolingOperations.Select(Operations.GetOperationFromType).ToArray();
 			_inputChannelsSize = inputNodeChannelsSize;
@@ -227,6 +231,8 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			return finalResult;
 		}
+
+		// TODO implement PackagedConvNeuralNetwork de-packaging. After testing, of course.
 	}
 
 	internal class FilterPoolNodeMono : IMonoConvNeuralNode

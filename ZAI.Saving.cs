@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Text.Json.Serialization;
+using ZUtilLib.ZAI.ConvNeuralNetworks;
 using ZUtilLib.ZAI.FFNeuralNetworks;
 
 namespace ZUtilLib.ZAI.Saving
@@ -88,6 +89,87 @@ namespace ZUtilLib.ZAI.Saving
 			InternalHeight = internalHeight;
 			InternalCount = internalCount;
 			OutputHeight = outputHeight;
+		}
+	}
+
+	public readonly struct PackagedConvNeuralNetwork
+	{
+		public int InputNodeCount { get; }
+		public (int W, int H) InputNodeDimensions { get; }
+		/// <summary>
+		/// float[layerN][nodeN][linkN][kernelXN][kernelYN]
+		/// Additionally stores information on the size of these parameters
+		/// </summary>
+		public float[][][][][] KernelsLinksNodesLayers { get; }
+		/// <summary>
+		/// float[layerN][nodeN]
+		/// </summary>
+		public float[][] BiasNodesLayers { get; }
+		public int[] PoolSampleDimensionsLayers { get; }
+		public NDNodeActivFunc[] ConvNodeActivationFuncsLayers { get; }
+		public ConvPoolingOp[] PoolSampleFuncsLayers { get; }
+		public PackagedNeuralNetwork PackedFullyConnectedNN { get; }
+
+		public PackagedConvNeuralNetwork(ConvolutionalNeuralNetwork convNeuralNet)
+		{
+			// Input node specs (no uniquely generated data)
+			InputNodeCount = convNeuralNet._inputNodeCount;
+			InputNodeDimensions = convNeuralNet._inputChannelsSize;
+
+			// Conv/pool node specs (plus unique kernels, pool sample dim., and biases)
+			PoolSampleDimensionsLayers = (int[])convNeuralNet._poolSampleWHs.Clone();
+
+			int convPoolNodeLayerCount = convNeuralNet.ConvAndPoolNodes.Length;
+			KernelsLinksNodesLayers = new float[convPoolNodeLayerCount][][][][];
+			BiasNodesLayers = new float[convPoolNodeLayerCount][];
+
+			// Iterate through each layer of connv/pool nodes
+			for (int layerN = 0; layerN < convPoolNodeLayerCount; layerN++)
+			{
+				int nodesInLayerCount = convNeuralNet.ConvAndPoolNodes[layerN].Length;
+				KernelsLinksNodesLayers[layerN] = new float[nodesInLayerCount][][][];
+				BiasNodesLayers[layerN] = new float[nodesInLayerCount];
+
+				// Retrieve node specifics for each node
+				for (int nodeN = 0; nodeN < nodesInLayerCount; nodeN++)
+				{
+					FilterPoolNodeMono currNode = convNeuralNet.ConvAndPoolNodes[layerN][nodeN];
+					int nodeLinksCount = currNode.NodeLinkKernels.Length;
+					KernelsLinksNodesLayers[layerN][nodeN] = new float[nodeLinksCount][][];
+
+					// Copy kernel for each link
+					for (int linkN = 0; linkN < nodeLinksCount; linkN++)
+					{
+						KernelsLinksNodesLayers[layerN][nodeN][linkN] = currNode.NodeLinkKernels[linkN].Kernel.ToJaggedMatrix();
+					}
+
+					// Retrieve bias
+					BiasNodesLayers[layerN][nodeN] = currNode.Bias;
+				}
+			}
+
+			// This theoretically works, but I ain't risking it:
+			//KernelsLinksNodesLayers = convNeuralNet.ConvAndPoolNodes.Select(la => la.Select(no => no.NodeLinkKernels.Select(li => li.Kernel.ToJaggedMatrix()).ToArray()).ToArray()).ToArray();
+
+			// Activation and pooling functions
+			ConvNodeActivationFuncsLayers = (NDNodeActivFunc[])convNeuralNet._convFuncLayers.Clone();
+			PoolSampleFuncsLayers = (ConvPoolingOp[])convNeuralNet._poolingOpLayers.Clone();
+
+			// "Final neural network" which is just packaged in itself
+			PackedFullyConnectedNN = new PackagedNeuralNetwork(convNeuralNet.FullyConnectedNN);
+		}
+
+		[JsonConstructor]
+		public PackagedConvNeuralNetwork(int inputNodeCount, (int W, int H) inputNodeDimensions, float[][][][][] kernelsLinksNodesLayers, float[][] biasNodesLayers, int[] poolSampleDimensionsLayers, NDNodeActivFunc[] convNodeActivationFuncsLayers, ConvPoolingOp[] poolSampleFuncsLayers, PackagedNeuralNetwork packedFullyConnectedNN)
+		{
+			InputNodeCount = inputNodeCount;
+			InputNodeDimensions = inputNodeDimensions;
+			KernelsLinksNodesLayers = kernelsLinksNodesLayers;
+			BiasNodesLayers = biasNodesLayers;
+			PoolSampleDimensionsLayers = poolSampleDimensionsLayers;
+			ConvNodeActivationFuncsLayers = convNodeActivationFuncsLayers;
+			PoolSampleFuncsLayers = poolSampleFuncsLayers;
+			PackedFullyConnectedNN = packedFullyConnectedNN;
 		}
 	}
 }
