@@ -66,7 +66,7 @@ namespace ZUtilLib.ZAI
 		public static float SwishEquation(float x) => x / (1 + MathF.Exp(-x));
 		public static float GELUEquation(float x) => 0.5f * x * (1 + MathF.Tanh(MathF.Sqrt(2 / MathF.PI) * (x + 0.044715f * MathF.Pow(x, 3))));
 	}
-	public static class Operations
+	public static class MatrixOperations
 	{
 		/// <summary>
 		/// Uses the provided sample matrix to give a float value.

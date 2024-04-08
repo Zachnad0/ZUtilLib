@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ZUtilLib.ZAI.FFNeuralNetworks;
+using ZUtilLib.ZAI.Saving;
 
 namespace ZUtilLib.ZAI.ConvNeuralNetworks
 {
@@ -10,15 +11,15 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 	/// </summary>
 	public class ConvolutionalNeuralNetwork
 	{
-		internal MatrixInputNodeMono[] InputNodes { get; set; }
+		internal MatrixInputNode[] InputNodes { get; set; }
 		/// <summary>[Layer][Node]</summary>
-		internal FilterPoolNodeMono[][] ConvAndPoolNodes { get; set; }
+		internal FilterPoolNode[][] ConvAndPoolNodes { get; set; }
 		internal NeuralNetwork FullyConnectedNN { get; set; }
 
 		internal readonly NDNodeActivFunc[] _convFuncLayers;
 		internal readonly ConvPoolingOp[] _poolingOpLayers;
 		internal readonly Equations.GraphEquation[] _filterActivFuncs;
-		internal readonly Operations.ConvOp[] _poolingMethods;
+		internal readonly MatrixOperations.ConvOp[] _poolingMethods;
 		internal readonly int[] _kernelWHs, _poolSampleWHs;
 		internal readonly NDNodeActivFunc _finalNNActivFunc;
 		internal readonly (int W, int H) _inputChannelsSize, _finalNNHiddenLayersCH;
@@ -55,15 +56,50 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			_convFuncLayers = convActivationFuncs;
 			_poolingOpLayers = poolingOperations;
 			_filterActivFuncs = convActivationFuncs.Select(Equations.GetEquationFromType).ToArray();
-			_poolingMethods = poolingOperations.Select(Operations.GetOperationFromType).ToArray();
+			_poolingMethods = poolingOperations.Select(MatrixOperations.GetOperationFromType).ToArray();
 			_inputChannelsSize = inputNodeChannelsSize;
 			_finalNNActivFunc = finalNNActivFunc;
 
 			// Array init
-			InputNodes = new MatrixInputNodeMono[inputNodeCount];
-			ConvAndPoolNodes = new FilterPoolNodeMono[convAndPoolLayerHeights.Length][];
+			InputNodes = new MatrixInputNode[inputNodeCount];
+			ConvAndPoolNodes = new FilterPoolNode[convAndPoolLayerHeights.Length][];
 			for (int i = 0; i < convAndPoolLayerHeights.Length; i++)
-				ConvAndPoolNodes[i] = new FilterPoolNodeMono[convAndPoolLayerHeights[i]];
+				ConvAndPoolNodes[i] = new FilterPoolNode[convAndPoolLayerHeights[i]];
+		}
+
+		/// <summary>
+		/// Un-packages a <see cref="PackagedConvNeuralNetwork"/> into a usable CNN instance.<br/>
+		/// Do <b>not</b> run InitializeThis method after.
+		/// </summary>
+		/// <param name="packedConvNeuralNet">The packaged net to be unpacked</param>
+		public ConvolutionalNeuralNetwork(PackagedConvNeuralNetwork packedConvNeuralNet)
+		{
+			// Basic check for argument struct
+			if (packedConvNeuralNet.InputNodeCount == 0 || packedConvNeuralNet.KernelsLinksNodesLayers == null)
+				throw new ArgumentException("ConvolutionalNeuralNetwork constructor critical error: packedConvNeuralNet argument struct contains invalidities.");
+
+			// Copy readonly data fields
+			_initialized = true;
+			_convFuncLayers = packedConvNeuralNet.ConvNodeActivationFuncsLayers;
+			_poolingOpLayers = packedConvNeuralNet.PoolSampleFuncsLayers;
+			_filterActivFuncs = _convFuncLayers.Select(Equations.GetEquationFromType).ToArray();
+			_poolingMethods = _poolingOpLayers.Select(MatrixOperations.GetOperationFromType).ToArray();
+			_kernelWHs = new int[packedConvNeuralNet.InputNodeCount];
+			_poolSampleWHs = packedConvNeuralNet.PoolSampleDimensionsLayers;
+			_inputChannelsSize = packedConvNeuralNet.InputNodeDimensions;
+			_inputNodeCount = packedConvNeuralNet.InputNodeCount;
+			var pFNN = packedConvNeuralNet.PackedFullyConnectedNN;
+			_outputNodeCount = pFNN.OutputNodeNames.Length;
+			_finalNNActivFunc = pFNN.NodeActivationFunc;
+			_finalNNHiddenLayersCH = (pFNN.InternalCount, pFNN.InternalHeight);
+
+			// IMPORTANT: EVERYTHING must be initialized and set IN GIVEN ORDER. No exceptions
+			// Setup input nodes
+			InputNodes = new MatrixInputNode[_inputNodeCount];
+			for (int n = 0; n < _inputNodeCount; n++)
+				InputNodes[n] = new MatrixInputNode();
+
+			// CONTINUE HERE with CNN un-packaging constructor
 		}
 
 		/// <summary>
@@ -77,7 +113,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			// Generate input nodes
 			for (int n = 0; n < _inputNodeCount; n++)
-				InputNodes[n] = new MatrixInputNodeMono();
+				InputNodes[n] = new MatrixInputNode();
 
 			// Generate convolutional & pooling nodes
 			for (int layer = 0; layer < ConvAndPoolNodes.Length; layer++)
@@ -85,10 +121,10 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 				for (int n = 0; n < ConvAndPoolNodes[layer].Length; n++)
 				{
 					// Setup links, randomise associated kernels, and normalize them
-					(IMonoConvNeuralNode, float[,])[] nodeLinkKernels;
+					(IConvNeuralNode, float[,])[] nodeLinkKernels;
 					if (layer == 0)
 					{
-						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[InputNodes.Length];
+						nodeLinkKernels = new (IConvNeuralNode, float[,])[InputNodes.Length];
 						for (int inpNode = 0; inpNode < nodeLinkKernels.Length; inpNode++)
 						{
 							nodeLinkKernels[inpNode] = (
@@ -99,7 +135,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 					}
 					else
 					{
-						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[ConvAndPoolNodes[layer - 1].Length];
+						nodeLinkKernels = new (IConvNeuralNode, float[,])[ConvAndPoolNodes[layer - 1].Length];
 						for (int prevLyrNode = 0; prevLyrNode < nodeLinkKernels.Length; prevLyrNode++)
 						{
 							nodeLinkKernels[prevLyrNode] = (
@@ -109,7 +145,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						}
 					}
 
-					ConvAndPoolNodes[layer][n] = new FilterPoolNodeMono(nodeLinkKernels, GetRandVal(), _poolSampleWHs[layer], _filterActivFuncs[layer], _poolingMethods[layer]);
+					ConvAndPoolNodes[layer][n] = new FilterPoolNode(nodeLinkKernels, GetRandVal(), _poolSampleWHs[layer], _filterActivFuncs[layer], _poolingMethods[layer]);
 				}
 			}
 
@@ -149,7 +185,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 			Random rand = new Random();
 			float GetRandAmpVal() => (float)rand.NextDouble() * learningRate * 2 - learningRate;
 			for (int i = 0; i < _inputNodeCount; i++)
-				InputNodes[i] = new MatrixInputNodeMono();
+				InputNodes[i] = new MatrixInputNode();
 
 			// Clone over conv-pool nodes, regenerate their links and kernels with (maybe) slightly modified kernels.
 			for (int lN = 0; lN < ConvAndPoolNodes.Length; lN++)
@@ -170,21 +206,21 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 					kernelClones.Foreach((i, arr) => arr.SetEach((x, y, v) => rand.NextDouble() <= mutateChance ? v + GetRandAmpVal() : v));
 
 					// Node link setup
-					(IMonoConvNeuralNode, float[,])[] nodeLinkKernels;
+					(IConvNeuralNode, float[,])[] nodeLinkKernels;
 					if (lN == 0) // Links to input nodes
 					{
-						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[_inputNodeCount];
+						nodeLinkKernels = new (IConvNeuralNode, float[,])[_inputNodeCount];
 						for (int iN = 0; iN < _inputNodeCount; iN++)
 							nodeLinkKernels[iN] = (InputNodes[iN], kernelClones[iN]);
 					}
 					else // Links to prev conv-pool layer
 					{
-						nodeLinkKernels = new (IMonoConvNeuralNode, float[,])[ConvAndPoolNodes[lN - 1].Length];
+						nodeLinkKernels = new (IConvNeuralNode, float[,])[ConvAndPoolNodes[lN - 1].Length];
 						for (int prevN = 0; prevN < nodeLinkKernels.Length; prevN++)
 							nodeLinkKernels[prevN] = (ConvAndPoolNodes[lN - 1][prevN], kernelClones[prevN]);
 					}
 
-					ConvAndPoolNodes[lN][nN] = new FilterPoolNodeMono(nodeLinkKernels, bias, _poolSampleWHs[lN], _filterActivFuncs[lN], _poolingMethods[lN]);
+					ConvAndPoolNodes[lN][nN] = new FilterPoolNode(nodeLinkKernels, bias, _poolSampleWHs[lN], _filterActivFuncs[lN], _poolingMethods[lN]);
 				}
 			}
 
@@ -231,21 +267,19 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 
 			return finalResult;
 		}
-
-		// TODO implement PackagedConvNeuralNetwork de-packaging. After testing, of course.
 	}
 
-	internal class FilterPoolNodeMono : IMonoConvNeuralNode
+	internal class FilterPoolNode : IConvNeuralNode
 	{
 		internal float[,] _cachedData = null;
-		public (IMonoConvNeuralNode Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
+		public (IConvNeuralNode Node, float[,] Kernel)[] NodeLinkKernels { get; private set; }
 		public float Bias { get; private set; }
 
 		private readonly Equations.GraphEquation _activationFunc;
-		private readonly Operations.ConvOp _poolOperation;
+		private readonly MatrixOperations.ConvOp _poolOperation;
 		private readonly int _poolSampleWH;
 
-		public FilterPoolNodeMono((IMonoConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, int poolSampleWH, Equations.GraphEquation activationFunc, Operations.ConvOp poolOperation)
+		public FilterPoolNode((IConvNeuralNode Node, float[,] Kernel)[] nodeLinkKernels, float bias, int poolSampleWH, Equations.GraphEquation activationFunc, MatrixOperations.ConvOp poolOperation)
 		{
 			NodeLinkKernels = nodeLinkKernels;
 			Bias = bias;
@@ -315,7 +349,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		}
 	}
 
-	internal class MatrixInputNodeMono : IMonoConvNeuralNode
+	internal class MatrixInputNode : IConvNeuralNode
 	{
 		internal float[,] _cachedData = null;
 		public float[,] CalculateData()
@@ -326,7 +360,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 		}
 	}
 
-	internal interface IMonoConvNeuralNode
+	internal interface IConvNeuralNode
 	{
 		/// <returns>float[channel][x, y]</returns>
 		public float[,] CalculateData();

@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Emit;
-using System.Threading.Tasks;
+using System.Text.Json;
 using ZUtilLib;
 using ZUtilLib.ZAI;
 using ZUtilLib.ZAI.ConvNeuralNetworks;
 using ZUtilLib.ZAI.Saving;
-using ZUtilLib.ZAI.Training;
 
 namespace LIBRARYTESTING
 {
@@ -82,6 +78,7 @@ namespace LIBRARYTESTING
 			testConvNetAlpha.InitializeThis(3);
 
 			float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
+			float[,] alphaInput = (float[,])inputMatrix.Clone();
 
 			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix).NormalizeArray(false);
 			finalResult.Foreach((i, v) => Console.WriteLine($"{v}, "));
@@ -94,6 +91,17 @@ namespace LIBRARYTESTING
 
 			float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix).NormalizeArray(false);
 			finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
+
+			// Testing packaged network
+			Console.WriteLine("============\n============");
+			PackagedConvNeuralNetwork packNetAlpha = new(testConvNetAlpha);
+			string serializedNetAlpha = JsonSerializer.Serialize(packNetAlpha);
+			Console.WriteLine(serializedNetAlpha);
+
+			PackagedConvNeuralNetwork reserializedPackNetAlpha = JsonSerializer.Deserialize<PackagedConvNeuralNetwork>(serializedNetAlpha);
+
+			//ConvolutionalNeuralNetwork convNetAlphaReloaded = new(reserializedPackNetAlpha);
+			//convNetAlphaReloaded...
 
 			Console.ReadKey();
 		}

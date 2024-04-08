@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text.Json.Serialization;
 using ZUtilLib.ZAI.ConvNeuralNetworks;
 using ZUtilLib.ZAI.FFNeuralNetworks;
@@ -110,8 +111,15 @@ namespace ZUtilLib.ZAI.Saving
 		public ConvPoolingOp[] PoolSampleFuncsLayers { get; }
 		public PackagedNeuralNetwork PackedFullyConnectedNN { get; }
 
+		/// <summary>
+		/// <paramref name="convNeuralNet"/> must be initialized!
+		/// </summary>
+		/// <param name="convNeuralNet"></param>
 		public PackagedConvNeuralNetwork(ConvolutionalNeuralNetwork convNeuralNet)
 		{
+			if (convNeuralNet == null || !convNeuralNet._initialized)
+				throw new ArgumentException("PackagedConvNeuralNetwork constructor critical error: convNeuralNet is either null or not initialized.");
+
 			// Input node specs (no uniquely generated data)
 			InputNodeCount = convNeuralNet._inputNodeCount;
 			InputNodeDimensions = convNeuralNet._inputChannelsSize;
@@ -133,7 +141,7 @@ namespace ZUtilLib.ZAI.Saving
 				// Retrieve node specifics for each node
 				for (int nodeN = 0; nodeN < nodesInLayerCount; nodeN++)
 				{
-					FilterPoolNodeMono currNode = convNeuralNet.ConvAndPoolNodes[layerN][nodeN];
+					FilterPoolNode currNode = convNeuralNet.ConvAndPoolNodes[layerN][nodeN];
 					int nodeLinksCount = currNode.NodeLinkKernels.Length;
 					KernelsLinksNodesLayers[layerN][nodeN] = new float[nodeLinksCount][][];
 
