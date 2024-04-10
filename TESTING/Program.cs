@@ -73,35 +73,37 @@ namespace LIBRARYTESTING
 		public static void Main(string[] args)
 		{
 			// Conv net testing
-			ConvolutionalNeuralNetwork testConvNetAlpha = new ConvolutionalNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+			ConvNeuralNetwork testConvNetAlpha = new ConvNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
 
 			testConvNetAlpha.InitializeThis(3);
 
 			float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
-			float[,] alphaInput = (float[,])inputMatrix.Clone();
+			float[,] alphaInput = (float[,])inputMatrix.Clone(); // For packaging testing
 
-			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix).NormalizeArray(false);
-			finalResult.Foreach((i, v) => Console.WriteLine($"{v}, "));
+			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix);
+			finalResult.Foreach((i, v) => Console.Write($"{v}, "));
 			Console.WriteLine("============\n============");
 
 			// Derived conv net testing
-			ConvolutionalNeuralNetwork testConvNetBeta = new ConvolutionalNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+			//ConvolutionalNeuralNetwork testConvNetBeta = new ConvolutionalNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
 
-			testConvNetBeta.InitializeThis(testConvNetAlpha, 0.2f, 3f);
+			//testConvNetBeta.InitializeThis(testConvNetAlpha, 0.2f, 3f);
 
-			float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix).NormalizeArray(false);
-			finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
+			//float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix);
+			//finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
 
 			// Testing packaged network
-			Console.WriteLine("============\n============");
+			//Console.WriteLine("============\n============");
 			PackagedConvNeuralNetwork packNetAlpha = new(testConvNetAlpha);
 			string serializedNetAlpha = JsonSerializer.Serialize(packNetAlpha);
-			Console.WriteLine(serializedNetAlpha);
+			//Console.WriteLine(serializedNetAlpha);
 
 			PackagedConvNeuralNetwork reserializedPackNetAlpha = JsonSerializer.Deserialize<PackagedConvNeuralNetwork>(serializedNetAlpha);
 
-			//ConvolutionalNeuralNetwork convNetAlphaReloaded = new(reserializedPackNetAlpha);
-			//convNetAlphaReloaded...
+			ConvNeuralNetwork convNetAlphaReloaded = new(reserializedPackNetAlpha);
+			float[] finalResult3 = convNetAlphaReloaded.ComputeResultMono(alphaInput);
+			Console.WriteLine("============\n============");
+			finalResult3.Foreach((i, v) => Console.Write($"{v}, "));
 
 			Console.ReadKey();
 		}

@@ -17,9 +17,14 @@ Features:
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>Zachnad0; Utility; Matrix-Utils; AI; Neural-Network; Convolutional-Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>3.0.0</Version>
+    <Version>3.1.0</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>3.0.0: // This update is quite massive and took forever. That is why I skipped version 2.
+    <PackageReleaseNotes>3.1.0:
+- ADDED PackagedConvNeuralNetwork to ZAI.Saving, which is a json-serializable data structure for saving the data of a convolutional neural network. Essential for actually saving models. Use this struct's constructor to package, and one of the neural net's constructors to un-pack the data.
+- RENAMED ConvolutionalNeuralNetworks class to ConvNeuralNetworks. Why did I make it so long initially?
+- FIXED some XML documentation.
+
+3.0.0: // This update is quite massive and took forever. That is why I skipped version 2.
 - ADDED convolutional neural networks...
 - ADDED 5 more activation functions.
 - ADDED byte[,].ToFloatMatrix() which converts a matrix of bytes into a matrix of floats.

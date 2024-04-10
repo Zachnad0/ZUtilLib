@@ -304,8 +304,8 @@ namespace ZUtilLib.ZAI.FFNeuralNetworks
 		/// <summary>
 		/// After initialization, this is used to input the input data and retrieve the calculated outcome.
 		/// </summary>
-		/// <param name="inputData">The names and values for each input node.</param>
-		/// <returns>The names and calculated output values of each output node.</returns>
+		/// <param name="inputData">The values for each input node.</param>
+		/// <returns>The calculated output values of each output node.</returns>
 		/// <exception cref="Exception"></exception>
 		public float[] PerformCalculations(params float[] inputData)
 		{
