@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.IO;
 using System.Text;
+using System.Drawing;
 
 namespace ZUtilLib
 {
@@ -217,6 +218,7 @@ namespace ZUtilLib
 					action(x, y, matrix[x, y]);
 			return matrix;
 		}
+
 		/// <summary>
 		/// Iterates through the matrix and runs <paramref name="action"/> for each value, passing in the current x, y, and <typeparamref name="T"/>.
 		/// </summary>
@@ -233,6 +235,7 @@ namespace ZUtilLib
 			}
 			return matrix;
 		}
+
 		/// <summary>
 		/// Iterates through the array and runs <paramref name="action"/> for each value, passing in the current i and <typeparamref name="T"/>.
 		/// </summary>
@@ -259,6 +262,7 @@ namespace ZUtilLib
 					matrix[x, y] = func(x, y, matrix[x, y]);
 			return matrix;
 		}
+
 		/// <summary>
 		/// Iterates through the matrix and runs <paramref name="func"/> for each value, passing in the current x, y, and <typeparamref name="T"/>, then setting the value of the matrix at that location to be the result.
 		/// </summary>
@@ -275,6 +279,7 @@ namespace ZUtilLib
 			}
 			return matrix;
 		}
+
 		/// <summary>
 		/// Iterates through the array and runs <paramref name="func"/> for each value, passing in the current iterator and <typeparamref name="T"/>, then setting the value of the array at that location to be the result.
 		/// </summary>
@@ -284,7 +289,7 @@ namespace ZUtilLib
 		{
 			int l = array.Length;
 			for (int i = 0; i < l; i++)
-					array[i] = func(i, array[i]);
+				array[i] = func(i, array[i]);
 			return array;
 		}
 
@@ -373,6 +378,7 @@ namespace ZUtilLib
 
 			return outMatrix;
 		}
+
 		/// <summary>
 		/// Rotates the matrix 90 degrees if <paramref name="clockwise"/>, otherwise counter-clockwise.
 		/// </summary>
@@ -481,6 +487,46 @@ namespace ZUtilLib
 			for (int x = 0; x < mWidth; x++)
 				outMatrix[x] = (T[])matrix[x].Clone();
 			return outMatrix;
+		}
+
+		/// <summary>
+		/// Converts a <see cref="Color"/> matrix into a matrix of 32-bit ARGB <see cref="uint"/>s.
+		/// </summary>
+		/// <param name="colorMatrix">The matrix to be converted.</param>
+		/// <returns>A matrix of 32-bit unsigned integers.</returns>
+		public static uint[][] ColorMatrixTo32BitARGB(Color[][] colorMatrix) => colorMatrix.Select(x => x.Select(y => (uint)y.ToArgb()).ToArray()).ToArray();
+
+		/// <summary>
+		/// Splits a matrix of <see cref="Color"/>s into four byte matrices of the individua; R, G, B, and A channels.
+		/// </summary>
+		/// <param name="colorMatrix">The matrix to be converted.</param>
+		/// <returns>A <see cref="ValueTuple"/> of four <see cref="byte"/>[][] for R, G, B, and A.</returns>
+		public static (byte[][] RChan, byte[][] GChan, byte[][] BChan, byte[][] AChan) SplitColorMatrix(Color[][] colorMatrix)
+		{
+			// ARGB format
+			byte[][][] outChannels = new byte[4][][];
+
+			// Initialize channel array
+			for (int i = 0; i < outChannels.Length; i++)
+			{
+				outChannels[i] = new byte[colorMatrix.Length][];
+				for (int x = 0; x < colorMatrix.Length; x++)
+					outChannels[i][x] = new byte[colorMatrix[x].Length];
+			}
+
+			// Iterate through matrix, match colors
+			for (int x = 0; x < colorMatrix.Length; x++)
+			{
+				for (int y = 0; y < colorMatrix[x].Length; y++)
+				{
+					// Convert ARGB to uint, bit shift for each channel
+					uint colInt = (uint)colorMatrix[x][y].ToArgb();
+					for (int i = 0; i < 4; i++)
+						outChannels[i][x][y] = (byte)(colInt >> ((3 - i) * 8)); // Byte-cast auto trims
+				}
+			}
+
+			return (outChannels[1], outChannels[2], outChannels[3], outChannels[0]);
 		}
 
 		public static class GreekAlphabet

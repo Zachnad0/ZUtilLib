@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using System.Text.Json;
 using ZUtilLib;
 using ZUtilLib.ZAI;
@@ -64,49 +65,64 @@ namespace LIBRARYTESTING
 		/// <summary>
 		/// f(x) = 0.002x^{4} - 0.2x^{2} + 0.4x + 3
 		/// </summary>
-		public static float[] MysteryFunc(params float[] inputs)
-		{
-			float x = inputs[0];
-			return new float[] { (0.002f * MathF.Pow(x, 4)) - (0.2f * MathF.Pow(x, 2)) + (0.4f * x) + 3 };
-		}
+		//public static float[] MysteryFunc(params float[] inputs)
+		//{
+		//	float x = inputs[0];
+		//	return new float[] { (0.002f * MathF.Pow(x, 4)) - (0.2f * MathF.Pow(x, 2)) + (0.4f * x) + 3 };
+		//}
 
 		public static void Main(string[] args)
 		{
-			// Conv net testing
-			ConvNeuralNetwork testConvNetAlpha = new ConvNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+			Color[][] randImg = new Color[100][];
+			for (int x = 0; x < 100; x++)
+			{
+				Random rand = new Random();
+				randImg[x] = new Color[100];
+				for (int y = 0; y < 100; y++)
+					randImg[x][y] = Color.FromArgb(rand.Next() * (rand.NextSingle() < 0.5f ? -1 : 1));
+			}
 
-			testConvNetAlpha.InitializeThis(3);
-
-			float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
-			float[,] alphaInput = (float[,])inputMatrix.Clone(); // For packaging testing
-
-			float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix);
-			finalResult.Foreach((i, v) => Console.Write($"{v}, "));
-			Console.WriteLine("============\n============");
-
-			// Derived conv net testing
-			//ConvolutionalNeuralNetwork testConvNetBeta = new ConvolutionalNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
-
-			//testConvNetBeta.InitializeThis(testConvNetAlpha, 0.2f, 3f);
-
-			//float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix);
-			//finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
-
-			// Testing packaged network
-			//Console.WriteLine("============\n============");
-			PackagedConvNeuralNetwork packNetAlpha = new(testConvNetAlpha);
-			string serializedNetAlpha = JsonSerializer.Serialize(packNetAlpha);
-			//Console.WriteLine(serializedNetAlpha);
-
-			PackagedConvNeuralNetwork reserializedPackNetAlpha = JsonSerializer.Deserialize<PackagedConvNeuralNetwork>(serializedNetAlpha);
-
-			ConvNeuralNetwork convNetAlphaReloaded = new(reserializedPackNetAlpha);
-			float[] finalResult3 = convNetAlphaReloaded.ComputeResultMono(alphaInput);
-			Console.WriteLine("============\n============");
-			finalResult3.Foreach((i, v) => Console.Write($"{v}, "));
-
-			Console.ReadKey();
+			var splitChannels = ZUtils.SplitColorMatrix(randImg);
+			Console.WriteLine(splitChannels.ToTuple());
 		}
+
+		//public static void Main(string[] args)
+		//{
+		//	// Conv net testing
+		//	ConvNeuralNetwork testConvNetAlpha = new ConvNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+
+		//	testConvNetAlpha.InitializeThis(3);
+
+		//	float[,] inputMatrix = Random.Shared.NextMatrix(28, 28, false);
+		//	float[,] alphaInput = (float[,])inputMatrix.Clone(); // For packaging testing
+
+		//	float[] finalResult = testConvNetAlpha.ComputeResultMono(inputMatrix);
+		//	finalResult.Foreach((i, v) => Console.Write($"{v}, "));
+		//	Console.WriteLine("============\n============");
+
+		//	// Derived conv net testing
+		//	//ConvolutionalNeuralNetwork testConvNetBeta = new ConvolutionalNeuralNetwork(1, 10, (28, 28), (1, 100), NDNodeActivFunc.ReLU, new[] { 5, 3 }, new[] { 2, 2 }, new[] { 2, 4 }, new[] { NDNodeActivFunc.ReLU, NDNodeActivFunc.Sigmoid }, new[] { ConvPoolingOp.Max, ConvPoolingOp.Max });
+
+		//	//testConvNetBeta.InitializeThis(testConvNetAlpha, 0.2f, 3f);
+
+		//	//float[] finalResult2 = testConvNetBeta.ComputeResultMono(inputMatrix);
+		//	//finalResult2.Foreach((i, v) => Console.Write($"{v}, "));
+
+		//	// Testing packaged network
+		//	//Console.WriteLine("============\n============");
+		//	PackagedConvNeuralNetwork packNetAlpha = new(testConvNetAlpha);
+		//	string serializedNetAlpha = JsonSerializer.Serialize(packNetAlpha);
+		//	//Console.WriteLine(serializedNetAlpha);
+
+		//	PackagedConvNeuralNetwork reserializedPackNetAlpha = JsonSerializer.Deserialize<PackagedConvNeuralNetwork>(serializedNetAlpha);
+
+		//	ConvNeuralNetwork convNetAlphaReloaded = new(reserializedPackNetAlpha);
+		//	float[] finalResult3 = convNetAlphaReloaded.ComputeResultMono(alphaInput);
+		//	Console.WriteLine("============\n============");
+		//	finalResult3.Foreach((i, v) => Console.Write($"{v}, "));
+
+		//	Console.ReadKey();
+		//}
 
 		//public static void Main(string[] args)
 		//{

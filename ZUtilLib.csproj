@@ -17,9 +17,13 @@ Features:
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>Zachnad0; Utility; Matrix-Utils; AI; Neural-Network; Convolutional-Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>3.1.0</Version>
+    <Version>3.1.1</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>3.1.0:
+    <PackageReleaseNotes>3.1.1:
+- ADDED uint[][] ColorMatrixTo32BitARGB(Color[][]) which is rather self explanatory.
+- ADDED (byte[][],byte[][],byte[][],byte[][]) SplitColorMatrix(Color[][]) which splits the single color channel into four: R,G,B,A.
+
+3.1.0:
 - ADDED PackagedConvNeuralNetwork to ZAI.Saving, which is a json-serializable data structure for saving the data of a convolutional neural network. Essential for actually saving models. Use this struct's constructor to package, and one of the neural net's constructors to un-pack the data.
 - RENAMED ConvolutionalNeuralNetworks class to ConvNeuralNetworks. Why did I make it so long initially?
 - FIXED some XML documentation.
