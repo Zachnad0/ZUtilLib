@@ -170,7 +170,7 @@ namespace ZUtilLib
 		/// <param name="width">Height of the matrix.</param>
 		/// <param name="negativeFloor">If true, will make the minimum value -1 instead of 0.</param>
 		/// <returns>An unnormalized matrix of size <paramref name="width"/> by <paramref name="height"/>.</returns>
-		public static float[,] NextMatrix(this Random random, int width, int height, bool negativeFloor = false)
+		public static float[,] NextMatrixRect(this Random random, int width, int height, bool negativeFloor = false)
 		{
 			float[,] newMatrix = new float[width, height];
 			for (int x = 0; x < width; x++)
@@ -179,8 +179,34 @@ namespace ZUtilLib
 				{
 					newMatrix[x, y] = (float)random.NextDouble();
 					if (negativeFloor)
-
+					{
 						newMatrix[x, y] = newMatrix[x, y] * 2 - 1;
+					}
+				}
+			}
+			return newMatrix;
+		}
+		/// <summary>
+		/// Generates a matrix of size <paramref name="height"/> and <paramref name="width"/>, consisting of random values between (0, or -1 if <paramref name="negativeFloor"/> is true) and 1.
+		/// </summary>
+		/// <param name="random">Current System.Random instance.</param>
+		/// <param name="height">Width of the matrix.</param>
+		/// <param name="width">Height of the matrix.</param>
+		/// <param name="negativeFloor">If true, will make the minimum value -1 instead of 0.</param>
+		/// <returns>An unnormalized matrix of size <paramref name="width"/> by <paramref name="height"/>.</returns>
+		public static float[][] NextMatrixJagged(this Random random, int width, int height, bool negativeFloor = false)
+		{
+			float[][] newMatrix = new float[width][];
+			for (int x = 0; x < width; x++)
+			{
+				newMatrix[x] = new float[height];
+				for (int y = 0; y < height; y++)
+				{
+					newMatrix[x][y] = (float)random.NextDouble();
+					if (negativeFloor)
+					{
+						newMatrix[x][y] = newMatrix[x][y] * 2 - 1;
+					}
 				}
 			}
 			return newMatrix;
@@ -314,6 +340,77 @@ namespace ZUtilLib
 		}
 
 		/// <summary>
+		/// Finds and returns all prime factors of the current number, as an unordered list.
+		/// </summary>
+		public static List<ulong> PrimeFactors(ulong value)
+		{
+			// Base case is if this number itself is prime
+			if (IsPrime(value)) return new List<ulong>() { value };
+
+			List<ulong> primeFactors = new List<ulong>();
+			// Take value, try dividing by 2, then 3, then next prime until there is a whole match
+			// Therefore this method is recursive
+			ulong maxFactorVal = (ulong)Math.Floor(Math.Sqrt(value));
+			for (ulong pFactor = 2; pFactor <= maxFactorVal; pFactor = FindNextHigherPrime(pFactor))
+			{
+				if (value % pFactor == 0)
+				{
+					primeFactors.Add(pFactor);
+					primeFactors.AddRange(PrimeFactors(value / pFactor));
+					break;
+				}
+			}
+
+			return primeFactors;
+		}
+
+		/// <summary>
+		/// Finds and returns the next greatest lower prime number to <paramref name="value"/>.
+		/// </summary>
+		private static ulong FindNextLowerPrime(ulong value)
+		{
+			if (value <= 2) return 0;
+			if (value == 3) return 2;
+
+			// Work backwards to find the next least prime
+			ulong latestPrime;
+			for (latestPrime = value - (value % 2 == 0 ? 1UL : 2UL); latestPrime > 3 && !IsPrime(latestPrime); latestPrime -= 2) ;
+
+			return latestPrime;
+		}
+
+		/// <summary>
+		/// Finds and returns the next prime number to <paramref name="value"/>.
+		/// </summary>
+		private static ulong FindNextHigherPrime(ulong value)
+		{
+			ulong n;
+			for (n = value + (value % 2 == 0 ? 1UL : 2UL); !IsPrime(n); n += 2) ;
+			return n;
+		}
+
+		/// <summary>
+		/// Finds out whether or not the given <paramref name="value"/> is a prime number.
+		/// </summary>
+		public static bool IsPrime(ulong value)
+		{
+			if (value == 2) return true; // 2 is a prime number
+			if (value <= 1) return false; // 1 is not a prime number, and neither are even numbers
+
+			ulong highestFactor = (ulong)Math.Floor(Math.Sqrt(value));
+			for (ulong currFactor = 2; currFactor <= highestFactor; currFactor++)
+			{
+				// If ever the value divided by a potential factor is a whole number, it is not a prime number
+				if (value % currFactor == 0)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		/// <summary>
 		/// Converts an array of lines of strings into a jagged-type character matrix.
 		/// </summary>
 		/// <returns>A completely new 2D jagged character array with no references to the <paramref name="lines"/>.</returns>
@@ -342,12 +439,37 @@ namespace ZUtilLib
 		public static string ToReadableString<T>(this T[][] matrix, string horizSeperator = "\t", string vertSeperator = "\n")
 		{
 			string outputString = "";
-			int mWidth = matrix.Length, mHeight = matrix[0].Length; ;
+			int mWidth = matrix.Length, mHeight = matrix[0].Length;
+
 			for (int y = 0; y < mHeight; y++)
 			{
+				outputString += y != 0 ? vertSeperator : "";
 				for (int x = 0; x < mWidth; x++)
+				{
 					outputString += $"{(x != 0 ? horizSeperator : "")}{matrix[x][y]}";
-				outputString += y != mWidth - 1 ? vertSeperator : "";
+				}
+			}
+
+			return outputString;
+		}
+		/// <summary>
+		/// Generates a customizable, nice-looking, human readable representation of a 2D array, as a string.
+		/// </summary>
+		/// <param name="horizSeperator">This string is inserted between each array element of each row.</param>
+		/// <param name="vertSeperator">This string is inserted after each row of elements.</param>
+		/// <returns></returns>
+		public static string ToReadableString<T>(this T[,] matrix, string horizSeperator = "\t", string vertSeperator = "\n")
+		{
+			string outputString = "";
+			int mWidth = matrix.GetLength(0), mHeight = matrix.GetLength(1);
+
+			for (int y = 0; y < mHeight; y++)
+			{
+				outputString += y != 0 ? vertSeperator : "";
+				for (int x = 0; x < mWidth; x++)
+				{
+					outputString += $"{(x != 0 ? horizSeperator : "")}{matrix[x, y]}";
+				}
 			}
 
 			return outputString;
@@ -487,6 +609,56 @@ namespace ZUtilLib
 			for (int x = 0; x < mWidth; x++)
 				outMatrix[x] = (T[])matrix[x].Clone();
 			return outMatrix;
+		}
+
+		/// <summary>
+		/// Just like the LINQ Select method for collections, but for all elements in a 2D array/matrix.
+		/// </summary>
+		/// <typeparam name="TSource">Source type</typeparam>
+		/// <typeparam name="TResult">Result type</typeparam>
+		/// <param name="matrix">Starting matrix</param>
+		/// <param name="func">LINQ Select-like mapping function to apply to each element. Arguments are: col, row, and value.</param>
+		/// <returns>A new matrix of the returned values from the <paramref name="func"/> parameter, applied to each element.</returns>
+		public static TResult[,] SelectMatrix<TSource, TResult>(this TSource[,] matrix, Func<int, int, TSource, TResult> func)
+		{
+			int width = matrix.GetLength(0), height = matrix.GetLength(1);
+			TResult[,] result = new TResult[width, height];
+
+			for (int cN = 0; cN < width; cN++)
+			{
+				for (int rN = 0; rN < height; rN++)
+				{
+					result[cN, rN] = func(cN, rN, matrix[cN, rN]);
+				}
+			}
+
+			return result;
+		}
+		/// <summary>
+		/// Just like the LINQ Select method for collections, but for all elements in a 2D array/matrix.
+		/// </summary>
+		/// <typeparam name="TSource">Source type</typeparam>
+		/// <typeparam name="TResult">Result type</typeparam>
+		/// <param name="matrix">Starting matrix</param>
+		/// <param name="func">LINQ Select-like mapping function to apply to each element. Arguments are: col, row, and value.</param>
+		/// <returns>A new matrix of the returned values from the <paramref name="func"/> parameter, applied to each element.</returns>
+		public static TResult[][] SelectMatrix<TSource, TResult>(this TSource[][] matrix, Func<int, int, TSource, TResult> func)
+		{
+			int width = matrix.Length;
+			TResult[][] result = new TResult[width][];
+
+			for (int cN = 0; cN < width; cN++)
+			{
+				int height = matrix[cN].Length;
+				result[cN] = new TResult[height];
+
+				for (int rN = 0; rN < height; rN++)
+				{
+					result[cN][rN] = func(cN, rN, matrix[cN][rN]);
+				}
+			}
+
+			return result;
 		}
 
 		/// <summary>

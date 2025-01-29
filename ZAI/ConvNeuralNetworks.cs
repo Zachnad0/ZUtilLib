@@ -152,7 +152,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						{
 							nodeLinkKernels[inpNode] = (
 								InputNodes[inpNode],
-								(float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
+								(float[,])((ZMatrix)random.NextMatrixRect(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
 								);
 						}
 					}
@@ -163,7 +163,7 @@ namespace ZUtilLib.ZAI.ConvNeuralNetworks
 						{
 							nodeLinkKernels[prevLyrNode] = (
 								ConvPoolNodesLayers[layer - 1][prevLyrNode],
-								(float[,])((ZMatrix)random.NextMatrix(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
+								(float[,])((ZMatrix)random.NextMatrixRect(_kernelWHs[layer], _kernelWHs[layer], true) * initialWeightAmp)
 								);
 						}
 					}
