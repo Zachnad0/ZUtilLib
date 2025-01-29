@@ -17,9 +17,19 @@ Features:
     <PackageIcon>icon.png</PackageIcon>
     <PackageTags>Zachnad0; Utility; Matrix-Utils; AI; Neural-Network; Convolutional-Neural-Network;</PackageTags>
     <NeutralLanguage>en-001</NeutralLanguage>
-    <Version>3.1.1</Version>
+    <Version>3.1.3</Version>
     <RepositoryType>git</RepositoryType>
-    <PackageReleaseNotes>3.1.1:
+    <PackageReleaseNotes>3.1.3:
+- UPDATED System.Text.Json package so now the library ain't vulnerable
+- ADDED IsPrime method, self-explanatory.
+- ADDED PrimeFactors method, which finds all prime factors for a given unsigned 64-bit integer value.
+- RENAMED NextMatrix to NextMatrixRect in ZUtils.cs.
+- ADDED NextMatrixJagged method for generating jagged arrays.
+- FIXED ToReadableString to work with jagged arrays.
+- ADDED ToReadableString overload for 2D arrays.
+- ADDED SelectMatrix methods for 2D and jagged arrays.
+
+3.1.1:
 - ADDED uint[][] ColorMatrixTo32BitARGB(Color[][]) which is rather self explanatory.
 - ADDED (byte[][],byte[][],byte[][],byte[][]) SplitColorMatrix(Color[][]) which splits the single color channel into four: R,G,B,A.
 
